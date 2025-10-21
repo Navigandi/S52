@@ -29,6 +29,7 @@
 #include "S52utils.h"   // PRINTF(), S52_atof(), S52_atoi(), CCHAR
 
 #include <math.h>       // floor()
+#include <stdio.h>
 
 #define version "3.2.0" // CS of Plib 3.2 S52 ed ?
 
@@ -86,18 +87,22 @@ static int      _parseList(const char *str, char *buf)
 
     if (NULL != str && *str != '\0') {
         do {
+            while(*str < '0' || *str > '9')
+                str++;
+
             if ( i>= LISTSIZE-1) {
                 PRINTF("WARNING: value in list lost!!\n");
                 break;
             }
 
-            buf[i++] = (unsigned char) S52_atoi(str);
+            if (*(str+1)!= ':')
+                buf[i++] = (unsigned char) S52_atoi(str);
 
             // skip digit
             while('0'<=*str && *str<='9')
                 str++;
 
-        } while(*str++ != '\0');      // skip ',' or exit
+        } while(*++str != '\0');      // skip ',' or exit
     }
 
     buf[i] = '\0';
@@ -1519,45 +1524,50 @@ static GString *_LITDSN01(S57_geo *geo)
             switch (catlit[i]) {
                 // CATLIT attribute has no value!
                 case 0: break;
-
                 //1: directional function    IP 30.1-3;  475.7;
-                case 1: tmp = "Dir "; break;
-
+                case 1: tmp = "Directional"; break;
                 //2: rear/upper light
+                case 2: tmp = "Rear/Upper"; break;
                 //3: front/lower light
-                case 3:
+                case 3: tmp = "Front/Lower"; break;
                 //4: leading light           IP 20.1-3;  475.6;
-                case 4: break;
-
+                case 4:  tmp = "Leading"; break;
                 //5: aero light              IP 60;      476.1;
                 case 5: tmp = "Aero "; break;
-
                 //6: air obstruction light   IP 61;      476.2;
-                case 6: tmp = "Aero "; break;                    // CHS chart1.pdf (INT)
+                case 6: tmp = "Air obstruction"; break;                    // CHS chart1.pdf (INT)
                 //7: fog detector light      IP 62;      477;
+                case 7: tmp = "Fog detector"; break;
                 //8: flood light             IP 63;      478.2;
+                case 8: tmp = "Flood"; break;
                 //9: strip light             IP 64;      478.5;
+                case 9: tmp = "Strip"; break;
                 //10: subsidiary light        IP 42;      471.8;
+                case 10: tmp = "Subsidiary"; break;
                 //11: spotlight
+                case 11: tmp = "Spotlight"; break;
                 //12: front
-                case 12: break;
+                case 12: tmp = "Front"; break;
                 //13: rear
-                case 13: break;
+                case 13: tmp = "Rear"; break;
                 //14: lower
+                case 14: tmp = "Lower"; break;
                 //15: upper
+                case 15: tmp = "Upper"; break;
                 //16: moire effect         IP 31;      475.8;
-
+                case  16: tmp = "Moire Effect"; break;
                 //17: emergency (bailout because this text overight the good one)
                 case 17:
                     _g_string_free(litdsn01, TRUE);
                     //litdsn01 = NULL;
                     return NULL;
                     //break;
-
                 //18: bearing light                       478.1;
+                case 18: tmp = "Bearing"; break;
                 //19: horizontally disposed
+                case 19: tmp = "Horizontally disposed"; break;
                 //20: vertically disposed
-
+                case 20: tmp = "AVertically disposed"; break;
                 default:
                     // FIXME: what is a good default
                     // or should it be left empty!
@@ -1625,10 +1635,15 @@ static GString *_LITDSN01(S57_geo *geo)
             //20: group alternating
             case 20: tmp = "Al"; break;
 
-            //21: 2 fixed (vertical)
+            //21: 2 fixed (vertical) 
             //22: 2 fixed (horizontal)
             //23: 3 fixed (vertical)
             //24: 3 fixed (horizontal)
+            case 21:
+            case 22:
+            case 23:
+            case 24:
+                tmp = "F"; break;
 
             //25: quick-flash plus long-flash
             case 25: tmp = "Q+LFl"; break;
@@ -1672,6 +1687,7 @@ static GString *_LITDSN01(S57_geo *geo)
                 case 1: tmp = "W"; break;
 
                 //2: black
+                case 2: tmp = "B"; break;
 
                 //3: red     IP 11.2;   450.2-3;
                 case 3: tmp = "R"; break;
@@ -1683,7 +1699,9 @@ static GString *_LITDSN01(S57_geo *geo)
                 case 6: tmp = "Y"; break;
 
                 //7: grey
+                case 7: tmp = "Gy"; break;
                 //8: brown
+                case 8: tmp = "Br"; break;
 
                 //9: amber   IP 11.8;   450.2-3;
                 case 9:  tmp = "Am"; break;       // CHS chart1.pdf (INT)
@@ -1692,7 +1710,9 @@ static GString *_LITDSN01(S57_geo *geo)
                 //11: orange  IP 11.7;   450.2-3;
                 case 11: tmp = "Or"; break;       // CHS chart1.pdf (INT)
                 //12: magenta
+                case 12: tmp = "Ma"; break;
                 //13: pink
+                case 13: tmp = "Pi"; break;
 
                 default:
                     // FIXME: what is a good default
@@ -1759,33 +1779,38 @@ static GString *_LITDSN01(S57_geo *geo)
 
         switch (status[0]) {
             //1: permanent
+            case 1: tmp = "permanent"; break;
 
             //2: occasional             IP 50;  473.2;
-            case 2: tmp = "occas"; break;
+            case 2: tmp = "occasional"; break;
 
             //3: recommended            IN 10;  431.1;
+            case 3: tmp = "recommended"; break;
             //4: not in use             IL 14, 44;  444.7;
+            case 4: tmp = "not in use"; break;
             //5: periodic/intermittent  IC 21; IQ 71;   353.3; 460.5;
+            case 5: tmp = "periodic/intermitent"; break;
             //6: reserved               IN 12.9;
-
+            case 6: tmp = "reserved"; break;
             //7: temporary              IP 54;
-            case 7: tmp = "temp"; break;
+            case 7: tmp = "temporary"; break;
             //8: private                IQ 70;
-            case 8: tmp = "priv"; break;
+            case 8: tmp = "private"; break;
 
             //9: mandatory
+            case 9: tmp = "mandatory"; break;
             //10: destroyed/ruined
-
+            case 10: tmp = "destroyed/ruined"; break;
             //11: extinguished
-            case 11: tmp = "exting"; break;
+            case 11: tmp = "extinguised"; break;
 
-            //12: illuminated
-            //13: historic
-            //14: public
-            //15: synchronized
-            //16: watched
-            //17: un-watched
-            //18: existence doubtful
+            case 12: tmp= "illuminated"; break;
+            case 13: tmp= "historic"; break;
+            case 14: tmp= "public"; break;
+            case 15: tmp= "synchronized"; break;
+            case 16: tmp= "watched"; break;
+            case 17: tmp= "un-watched"; break;
+            case 18: tmp= "existence doubtful"; break;
             default:
                 // FIXME: what is a good default
                 // or should it be left empty!
@@ -2170,7 +2195,7 @@ static GString *OWNSHP02 (S57_geo *geo)
 //        antenna offset.
 //    1.2 In this procedure it is assumed that the heading line, beam bearing line and course
 //        and speed vector originate at the conning point. If another point of origin is used,
-//        for example to account for the varying position of the ship’s turning centre, this must
+//        for example to account for the varying position of the shipï¿½s turning centre, this must
 //        be made clear to the mariner.
 //
 // 2. DISPLAY OPTIONS

@@ -275,7 +275,8 @@ static int    _shm_fd    = 0;
 //static CCHAR *_shm_name  = "libS52.mallocsz.txt";
 
 #define _LIBC
-#include <malloc.h>
+//#include <malloc.h>
+#include <stdlib.h>
 #include <unistd.h>  // write()
 
 static void *_malloc_hook_cb(size_t size, const void *caller);
@@ -306,110 +307,110 @@ static char      *_addr2hex(size_t ptr)
     return buf;
 }
 
-static void      *_malloc_hook_cb(size_t size, const void *caller)
-{
-    //malloc_stats();
-    (void)caller;
+// static void      *_malloc_hook_cb(size_t size, const void *caller)
+// {
+//     //malloc_stats();
+//     (void)caller;
 
-    // Restore all old hooks
-    __malloc_hook = _malloc_hook_orig;
-    __free_hook   = _free_hook_orig;
+//     // Restore all old hooks
+//     __libc_malloc = _malloc_hook_orig;
+//     __libc_free   = _free_hook_orig;
 
-    // Call recursively
-    size_t ptr = (size_t)malloc(size);
-    _mem_alloc += size;
+//     // Call recursively
+//     size_t ptr = (size_t)malloc(size);
+//     _mem_alloc += size;
 
-    char *buf = _addr2hex((size_t)ptr);
-    buf[0] = '+';
-    buf[HEXSZ-1] = ' ';  // overwrite '\n'
-    write(_shm_fd, buf, HEXSZ);
+//     char *buf = _addr2hex((size_t)ptr);
+//     buf[0] = '+';
+//     buf[HEXSZ-1] = ' ';  // overwrite '\n'
+//     write(_shm_fd, buf, HEXSZ);
 
-    buf = _addr2hex(size);
-    buf[0]       = ' ';
-    buf[HEXSZ-1] = '\n';  // overwrite '\n'
-    write(_shm_fd, buf, HEXSZ);
-
-
-    void *buffer[128];
-    int nptrs = backtrace(buffer, 128);
-    backtrace_symbols_fd(buffer, nptrs, _shm_fd);
-
-    /*
-    // Save underlying hooks
-    _malloc_hook_orig = __malloc_hook;
-    _free_hook_orig   = __free_hook;
-
-    // printf might call malloc, so protect it too
-    // + 0x0000000000E7ADC0   0x0000000000000010
-    // malloc (16) returns 0xe7adc0
-    //printf("malloc (%u) returns %p\n", (unsigned int) size, ptr);
-    //*/
-
-    // Restore our own hooks
-    __malloc_hook = _malloc_hook_cb;
-    __free_hook   = _free_hook_cb;
-
-    return (void*)ptr;
-}
-
-static void       _free_hook_cb(void *ptr, const void *caller)
-{
-    (void)caller;
-
-    //Restore all old hooks
-    __malloc_hook = _malloc_hook_orig;
-    __free_hook   = _free_hook_orig;
-
-    char *buf = _addr2hex((size_t)ptr);
-    buf[0] = '-';
-    write(_shm_fd, buf, HEXSZ);
+//     buf = _addr2hex(size);
+//     buf[0]       = ' ';
+//     buf[HEXSZ-1] = '\n';  // overwrite '\n'
+//     write(_shm_fd, buf, HEXSZ);
 
 
-    // Call recursively
-    free(ptr);
+//     void *buffer[128];
+//     int nptrs = backtrace(buffer, 128);
+//     backtrace_symbols_fd(buffer, nptrs, _shm_fd);
 
-    /*
-    // Save underlying hooks
-    _malloc_hook_orig = __malloc_hook;
-    _free_hook_orig   = __free_hook;
+//     /*
+//     // Save underlying hooks
+//     _malloc_hook_orig = __malloc_hook;
+//     _free_hook_orig   = __free_hook;
 
-    // printf might call free, so protect it too.
-    printf("freed pointer %p\n", ptr);
-    */
+//     // printf might call malloc, so protect it too
+//     // + 0x0000000000E7ADC0   0x0000000000000010
+//     // malloc (16) returns 0xe7adc0
+//     //printf("malloc (%u) returns %p\n", (unsigned int) size, ptr);
+//     //*/
 
-    // Restore our own hooks
-    __malloc_hook = _malloc_hook_cb;
-    __free_hook   = _free_hook_cb;
-}
+//     // Restore our own hooks
+//     __libc_malloc = _malloc_hook_cb;
+//     __libc_free   = _free_hook_cb;
 
-static void       _init_hook(void)
-{
-    if (NULL==_malloc_hook_orig && NULL==_free_hook_orig) {
-        _malloc_hook_orig = __malloc_hook;
-        _free_hook_orig   = __free_hook;
+//     return (void*)ptr;
+// }
 
-        __malloc_hook     = _malloc_hook_cb;
-        __free_hook       = _free_hook_cb;
-    } else {
-        // logic bug - unballanced init/done
-        g_assert(0);
-    }
-}
+// static void       _free_hook_cb(void *ptr, const void *caller)
+// {
+//     (void)caller;
 
-static void       _done_hook(void)
-{
-    // __malloc_hook & __free_hook are originally NULL!
-    //if (NULL!=_malloc_hook_orig && NULL!=_free_hook_orig) {
-        __malloc_hook     = _malloc_hook_orig;
-        __free_hook       = _free_hook_orig;
-        _malloc_hook_orig = NULL;
-        _free_hook_orig   = NULL;
-    //} else {
-        // logic bug - unballanced init/done
-    //    g_assert(0);
-    //}
+//     //Restore all old hooks
+//     __libc_malloc = _malloc_hook_orig;
+//     __libc_free   = _free_hook_orig;
 
-}
+//     char *buf = _addr2hex((size_t)ptr);
+//     buf[0] = '-';
+//     write(_shm_fd, buf, HEXSZ);
+
+
+//     // Call recursively
+//     free(ptr);
+
+//     /*
+//     // Save underlying hooks
+//     _malloc_hook_orig = __malloc_hook;
+//     _free_hook_orig   = __free_hook;
+
+//     // printf might call free, so protect it too.
+//     printf("freed pointer %p\n", ptr);
+//     */
+
+//     // Restore our own hooks
+//     __libc_malloc = _malloc_hook_cb;
+//     __libc_free   = _free_hook_cb;
+// }
+
+// static void       _init_hook(void)
+// {
+//     if (NULL==_malloc_hook_orig && NULL==_free_hook_orig) {
+//         _malloc_hook_orig = __libc_malloc;
+//         _free_hook_orig   = __libc_free;
+
+//         __libc_malloc     = _malloc_hook_cb;
+//         __libc_free       = _free_hook_cb;
+//     } else {
+//         // logic bug - unballanced init/done
+//         g_assert(0);
+//     }
+// }
+
+// static void       _done_hook(void)
+// {
+//     // __malloc_hook & __free_hook are originally NULL!
+//     //if (NULL!=_malloc_hook_orig && NULL!=_free_hook_orig) {
+//         __libc_malloc     = _malloc_hook_orig;
+//         __libc_free       = _free_hook_orig;
+//         _malloc_hook_orig = NULL;
+//         _free_hook_orig   = NULL;
+//     //} else {
+//         // logic bug - unballanced init/done
+//     //    g_assert(0);
+//     //}
+
+// }
 //#endif  // 0
 #endif  // !S52_USE_ANDROID
 
@@ -973,7 +974,7 @@ int      S52_utils_mtrace(void)
 {
     //mtrace();
 
-    _init_hook();
+    //_init_hook();
 
     return TRUE;
 }
@@ -982,7 +983,7 @@ int      S52_utils_muntrace(void)
 {
     //muntrace();
 
-    _done_hook();
+    //_done_hook();
 
     return TRUE;
 }

@@ -25,12 +25,12 @@
 //#include "S52utils.h"   // PRINTF()
 
 #include <math.h>       // INFINITY, nearbyint()
-
-#ifdef S52_USE_PROJ
-static projPJ      _pjsrc   = NULL;   // projection source
-static projPJ      _pjdst   = NULL;   // projection destination
-static CCHAR      *_pjstr   = NULL;
 static int         _doInit  = TRUE;   // will set new src projection
+#ifdef S52_USE_PROJ
+// static projPJ      _pjsrc   = NULL;   // projection source
+// static projPJ      _pjdst   = NULL;   // projection destination
+static CCHAR      *_pjstr   = NULL;
+
 static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
 //static const char *_argsdst = "+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
 // Note: ../../../FWTools/FWTools-2.0.6/bin/gdalwarp
@@ -212,179 +212,179 @@ static int    _initPROJ()
     return TRUE;
 }
 
-int        S57_donePROJ(void)
-{
-#ifdef S52_USE_PROJ
-    if (NULL != _pjsrc) pj_free(_pjsrc);
-    if (NULL != _pjdst) pj_free(_pjdst);
-#endif
+// int        S57_donePROJ(void)
+// {
+// #ifdef S52_USE_PROJ
+//     if (NULL != _pjsrc) pj_free(_pjsrc);
+//     if (NULL != _pjdst) pj_free(_pjdst);
+// #endif
 
-    _pjsrc  = NULL;
-    _pjdst  = NULL;
-    _doInit = TRUE;
+//     _pjsrc  = NULL;
+//     _pjdst  = NULL;
+//     _doInit = TRUE;
 
-    if (NULL != _attList)
-        g_string_free(_attList, TRUE);
-    _attList = NULL;
+//     if (NULL != _attList)
+//         g_string_free(_attList, TRUE);
+//     _attList = NULL;
 
-    g_free((gpointer)_pjstr);
-    _pjstr = NULL;
+//     g_free((gpointer)_pjstr);
+//     _pjstr = NULL;
 
-    return TRUE;
-}
+//     return TRUE;
+// }
 
-int        S57_setMercPrj(double lat, double lon)
-{
-    // From: http://trac.osgeo.org/proj/wiki/GenParms (and other link from that page)
-    // Note: For merc, PROJ.4 does not support a latitude of natural origin other than the equator (lat_0=0).
-    // Note: true scale using the +lat_ts parameter, which is the latitude at which the scale is 1.
-    // Note: +lon_wrap=180.0 convert clamp [-180..180] to clamp [0..360]
+// int        S57_setMercPrj(double lat, double lon)
+// {
+//     // From: http://trac.osgeo.org/proj/wiki/GenParms (and other link from that page)
+//     // Note: For merc, PROJ.4 does not support a latitude of natural origin other than the equator (lat_0=0).
+//     // Note: true scale using the +lat_ts parameter, which is the latitude at which the scale is 1.
+//     // Note: +lon_wrap=180.0 convert clamp [-180..180] to clamp [0..360]
 
 
-/* http://en.wikipedia.org/wiki/Web_Mercator
-PROJCS["WGS 84 / Pseudo-Mercator",
-    GEOGCS["WGS 84",
-        DATUM["WGS_1984",
-            SPHEROID["WGS 84",6378137,298.257223563,
-                AUTHORITY["EPSG","7030"]],
-            AUTHORITY["EPSG","6326"]],
-        PRIMEM["Greenwich",0,
-            AUTHORITY["EPSG","8901"]],
-        UNIT["degree",0.0174532925199433,
-            AUTHORITY["EPSG","9122"]],
-        AUTHORITY["EPSG","4326"]],
-    PROJECTION["Mercator_1SP"],
-    PARAMETER["central_meridian",0],
-    PARAMETER["scale_factor",1],
-    PARAMETER["false_easting",0],
-    PARAMETER["false_northing",0],
-    UNIT["metre",1,
-        AUTHORITY["EPSG","9001"]],
-    AXIS["X",EAST],
-    AXIS["Y",NORTH],
-    EXTENSION["PROJ4","+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs"],
-    AUTHORITY["EPSG","3857"]]
-*/
+// /* http://en.wikipedia.org/wiki/Web_Mercator
+// PROJCS["WGS 84 / Pseudo-Mercator",
+//     GEOGCS["WGS 84",
+//         DATUM["WGS_1984",
+//             SPHEROID["WGS 84",6378137,298.257223563,
+//                 AUTHORITY["EPSG","7030"]],
+//             AUTHORITY["EPSG","6326"]],
+//         PRIMEM["Greenwich",0,
+//             AUTHORITY["EPSG","8901"]],
+//         UNIT["degree",0.0174532925199433,
+//             AUTHORITY["EPSG","9122"]],
+//         AUTHORITY["EPSG","4326"]],
+//     PROJECTION["Mercator_1SP"],
+//     PARAMETER["central_meridian",0],
+//     PARAMETER["scale_factor",1],
+//     PARAMETER["false_easting",0],
+//     PARAMETER["false_northing",0],
+//     UNIT["metre",1,
+//         AUTHORITY["EPSG","9001"]],
+//     AXIS["X",EAST],
+//     AXIS["Y",NORTH],
+//     EXTENSION["PROJ4","+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs"],
+//     AUTHORITY["EPSG","3857"]]
+// */
 
-    // FIXME: POLAR ENC
-    // const char *templ = "+proj=omerc +lat_0=4 +lonc=115 +alpha=53.31582047222222 +k=0.99984
-    //                      +x_0=590476.8727431979 +y_0=442857.6545573985
-    //                      +ellps=evrstSS +towgs84=-533.4,669.2,-52.5,0,0,4.28,9.4
-    //                      +to_meter=0.3047994715386762 +no_defs ";
-    //
-    //FAIL: ENC skewed: const char *templ = "+proj=omerc +lat_0=%.6f +lonc=%.6f +x_0=0 +y_0=0 +alpha=45 +gamma=0 +k_0=1 +ellps=WGS84 +no_defs";
+//     // FIXME: POLAR ENC
+//     // const char *templ = "+proj=omerc +lat_0=4 +lonc=115 +alpha=53.31582047222222 +k=0.99984
+//     //                      +x_0=590476.8727431979 +y_0=442857.6545573985
+//     //                      +ellps=evrstSS +towgs84=-533.4,669.2,-52.5,0,0,4.28,9.4
+//     //                      +to_meter=0.3047994715386762 +no_defs ";
+//     //
+//     //FAIL: ENC skewed: const char *templ = "+proj=omerc +lat_0=%.6f +lonc=%.6f +x_0=0 +y_0=0 +alpha=45 +gamma=0 +k_0=1 +ellps=WGS84 +no_defs";
 
-    const char *templ = "+proj=merc +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
-    // FIXME: utm tilt ENC .. why?
-    //const char *templ = "+proj=utm +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
+//     const char *templ = "+proj=merc +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
+//     // FIXME: utm tilt ENC .. why?
+//     //const char *templ = "+proj=utm +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
 
-    if (NULL != _pjstr) {
-        PRINTF("WARNING: Merc projection str allready set\n");
-        return FALSE;
-    }
+//     if (NULL != _pjstr) {
+//         PRINTF("WARNING: Merc projection str allready set\n");
+//         return FALSE;
+//     }
 
-    _pjstr = g_strdup_printf(templ, lat, lon);
-    PRINTF("DEBUG: lat:%f, lon:%f [%s]\n", lat, lon, _pjstr);
+//     _pjstr = g_strdup_printf(templ, lat, lon);
+//     PRINTF("DEBUG: lat:%f, lon:%f [%s]\n", lat, lon, _pjstr);
 
-#ifdef S52_USE_PROJ
-    if (NULL != _pjdst)
-        pj_free(_pjdst);
+// #ifdef S52_USE_PROJ
+//     if (NULL != _pjdst)
+//         pj_free(_pjdst);
 
-    _pjdst = pj_init_plus(_pjstr);
-    if (FALSE == _pjdst) {
-        PRINTF("ERROR: init pjdst PROJ4 (lat:%f) [%s]\n", lat, pj_strerrno(pj_errno));
-        g_assert(0);
-        return FALSE;
-    }
-#endif
+//     _pjdst = pj_init_plus(_pjstr);
+//     if (FALSE == _pjdst) {
+//         PRINTF("ERROR: init pjdst PROJ4 (lat:%f) [%s]\n", lat, pj_strerrno(pj_errno));
+//         g_assert(0);
+//         return FALSE;
+//     }
+// #endif
 
-    return TRUE;
-}
+//     return TRUE;
+// }
 
-CCHAR     *S57_getPrjStr(void)
-{
-    return _pjstr;
-}
+// CCHAR     *S57_getPrjStr(void)
+// {
+//     return _pjstr;
+// }
 
-projXY     S57_prj2geo(projUV uv)
-// convert PROJ to geographic (LL)
-{
-    if (TRUE == _doInit) return uv;
-    if (NULL == _pjdst)  return uv;
+// PJ_COORD     S57_prj2geo(projUV uv)
+// // convert PROJ to geographic (LL)
+// {
+//     if (TRUE == _doInit) return uv;
+//     if (NULL == _pjdst)  return uv;
 
-#ifdef S52_USE_PROJ
-    uv = pj_inv(uv, _pjdst);
-    if (0 != pj_errno) {
-        PRINTF("ERROR: x=%f y=%f %s\n", uv.u, uv.v, pj_strerrno(pj_errno));
-        g_assert(0);
-        return uv;
-    }
+// #ifdef S52_USE_PROJ
+//     uv = pj_inv(uv, _pjdst);
+//     if (0 != pj_errno) {
+//         PRINTF("ERROR: x=%f y=%f %s\n", uv.u, uv.v, pj_strerrno(pj_errno));
+//         g_assert(0);
+//         return uv;
+//     }
 
-    uv.u /= DEG_TO_RAD;
-    uv.v /= DEG_TO_RAD;
-#endif
+//     uv.u /= DEG_TO_RAD;
+//     uv.v /= DEG_TO_RAD;
+// #endif
 
-    return uv;
-}
+//     return uv;
+// }
 
-int        S57_geo2prj3dv(guint npt, pt3 *data)
-// convert a vector of lon/lat/z (pt3) to XY(z) 'in-place'
-{
-#ifdef S52_USE_GV
-    return TRUE;
-#endif
+// int        S57_geo2prj3dv(guint npt, pt3 *data)
+// // convert a vector of lon/lat/z (pt3) to XY(z) 'in-place'
+// {
+// #ifdef S52_USE_GV
+//     return TRUE;
+// #endif
 
-    return_if_null(data);
+//     return_if_null(data);
 
-    //pt3 *pt = (pt3*)data;
-    pt3 *pt = data;
+//     //pt3 *pt = (pt3*)data;
+//     pt3 *pt = data;
 
-    if (TRUE == _doInit) {
-        _initPROJ();
-    }
+//     if (TRUE == _doInit) {
+//         _initPROJ();
+//     }
 
-    if (NULL == _pjdst) {
-        PRINTF("WARNING: nothing to project to .. load a chart first!\n");
-        return FALSE;
-    }
+//     if (NULL == _pjdst) {
+//         PRINTF("WARNING: nothing to project to .. load a chart first!\n");
+//         return FALSE;
+//     }
 
-#ifdef S52_USE_PROJ
-    // deg to rad --latlon
-    for (guint i=0; i<npt; ++i, ++pt) {
-        pt->x *= DEG_TO_RAD;
-        pt->y *= DEG_TO_RAD;
-    }
+// #ifdef S52_USE_PROJ
+//     // deg to rad --latlon
+//     for (guint i=0; i<npt; ++i, ++pt) {
+//         pt->x *= DEG_TO_RAD;
+//         pt->y *= DEG_TO_RAD;
+//     }
 
-    // reset to beginning
-    pt = (pt3*)data;
+//     // reset to beginning
+//     pt = (pt3*)data;
 
-    // rad to cartesian  --mercator
-    int ret = pj_transform(_pjsrc, _pjdst, npt, 3, &pt->x, &pt->y, &pt->z);
-    if (0 != ret) {
-        PRINTF("WARNING: in transform (%i): %s (%f,%f)\n", ret, pj_strerrno(pj_errno), pt->x, pt->y);
-        g_assert(0);
-        return FALSE;
-    }
+//     // rad to cartesian  --mercator
+//     int ret = pj_transform(_pjsrc, _pjdst, npt, 3, &pt->x, &pt->y, &pt->z);
+//     if (0 != ret) {
+//         PRINTF("WARNING: in transform (%i): %s (%f,%f)\n", ret, pj_strerrno(pj_errno), pt->x, pt->y);
+//         g_assert(0);
+//         return FALSE;
+//     }
 
-    /*
-    // FIXME: test heuristic to reduce the number of point (for LOD):
-    // try to (and check) reduce the number of points by flushing decimal
-    // then libtess should remove coincident points.
-    //
-    // Other trick, try to reduce more by rounding using cell scale
-    // pt->x = nearbyint(pt->x / (? * 10)) / (? * 10);
-    //
-    // test - 1km
-    pt = (pt3*)data;
-    for (guint i=0; i<npt; ++i, ++pt) {
-        pt->x = nearbyint(pt->x / 1000.0) * 1000.0;
-        pt->y = nearbyint(pt->y / 1000.0) * 1000.0;
-    }
-    //*/
-#endif
+//     /*
+//     // FIXME: test heuristic to reduce the number of point (for LOD):
+//     // try to (and check) reduce the number of points by flushing decimal
+//     // then libtess should remove coincident points.
+//     //
+//     // Other trick, try to reduce more by rounding using cell scale
+//     // pt->x = nearbyint(pt->x / (? * 10)) / (? * 10);
+//     //
+//     // test - 1km
+//     pt = (pt3*)data;
+//     for (guint i=0; i<npt; ++i, ++pt) {
+//         pt->x = nearbyint(pt->x / 1000.0) * 1000.0;
+//         pt->y = nearbyint(pt->y / 1000.0) * 1000.0;
+//     }
+//     //*/
+// #endif
 
-    return TRUE;
-}
+//     return TRUE;
+// }
 
 #if 0
 static int    _inLine(pt3 A, pt3 B, pt3 C)
@@ -551,44 +551,44 @@ static int    _simplifyGEO(_S57_geo *geo)
 }
 #endif  // 0
 
-int        S57_geo2prj(_S57_geo *geo)
-{
-    // useless - called on eaaach geo from rbin
-    //return_if_null(geo);
+// int        S57_geo2prj(_S57_geo *geo)
+// {
+//     // useless - called on eaaach geo from rbin
+//     //return_if_null(geo);
 
-    // FIXME: area not in GROUP1 (layer>1) - topologie not related to earth surface
-    //   - simplifyGEO at load-time fail to catch area with centroid
-    //   - simplifyGEO at APP()/resolve-time need to know if area allready simplified
+//     // FIXME: area not in GROUP1 (layer>1) - topologie not related to earth surface
+//     //   - simplifyGEO at load-time fail to catch area with centroid
+//     //   - simplifyGEO at APP()/resolve-time need to know if area allready simplified
 
-    // FIXME: this break line/poly match
-    /* FIX: call on area object with a SY() (centroid in area) and no AC() or AP()
-    if ('A' == geo->objType) {
-        if ((0 == g_strcmp0(geo->name, "ISTZNE")) ||
-            (0 == g_strcmp0(geo->name, "TSSLPT")) ||
-            (0 == g_strcmp0(geo->name, "CTNARE")))   // LC()
-        {
-            _simplifyGEO(geo);
-        }
-    }
-    */
+//     // FIXME: this break line/poly match
+//     /* FIX: call on area object with a SY() (centroid in area) and no AC() or AP()
+//     if ('A' == geo->objType) {
+//         if ((0 == g_strcmp0(geo->name, "ISTZNE")) ||
+//             (0 == g_strcmp0(geo->name, "TSSLPT")) ||
+//             (0 == g_strcmp0(geo->name, "CTNARE")))   // LC()
+//         {
+//             _simplifyGEO(geo);
+//         }
+//     }
+//     */
 
-    if (TRUE == _doInit)
-        _initPROJ();
+//     if (TRUE == _doInit)
+//         _initPROJ();
 
-#ifdef S52_USE_PROJ
-    guint nr = S57_getRingNbr(geo);
-    for (guint i=0; i<nr; ++i) {
-        guint   npt;
-        double *ppt;
-        if (TRUE == S57_getGeoData(geo, i, &npt, &ppt)) {
-            if (FALSE == S57_geo2prj3dv(npt, (pt3*)ppt))
-                return FALSE;
-        }
-    }
-#endif  // S52_USE_PROJ
+// #ifdef S52_USE_PROJ
+//     guint nr = S57_getRingNbr(geo);
+//     for (guint i=0; i<nr; ++i) {
+//         guint   npt;
+//         double *ppt;
+//         if (TRUE == S57_getGeoData(geo, i, &npt, &ppt)) {
+//             if (FALSE == S57_geo2prj3dv(npt, (pt3*)ppt))
+//                 return FALSE;
+//         }
+//     }
+// #endif  // S52_USE_PROJ
 
-    return TRUE;
-}
+//     return TRUE;
+// }
 
 static int    _doneGeoData(_S57_geo *geo)
 // delete the geo data it self - data from OGR is a copy
@@ -666,8 +666,9 @@ int        S57_doneData   (_S57_geo *geo, gpointer user_data)
 
 S57_geo   *S57_setPOINT(geocoord *xyz)
 {
+#if defined(S52_USE_GL1) || defined(S52_USE_GL2)
     return_if_null(xyz);
-
+#endif
     // FIXME: use g_slice()
     _S57_geo *geo = g_new0(_S57_geo, 1);
     //_S57_geo *geo = g_try_new0(_S57_geo, 1);
@@ -765,8 +766,10 @@ S57_geo   *S57_setMLINE(guint nLineCount, guint *linexyznbr, geocoord **linexyz)
 //S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S57_AW_t origAW)
 S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz)
 {
+#if defined(S52_USE_GL1) || defined(S52_USE_GL2)
     return_if_null(ringxyznbr);
     return_if_null(ringxyz);
+#endif
 
     // FIXME: use g_slice()
     _S57_geo *geo = g_new0(_S57_geo, 1);
@@ -1834,7 +1837,7 @@ int        S57_dumpData(_S57_geo *geo, int dumpCoords)
     return TRUE;
 }
 
-#ifdef S52_DEBUG
+////#ifdef S52_DEBUG
 guint      S57_getS57ID(_S57_geo *geo)
 // get the first field of S57_geo
 {
@@ -1843,7 +1846,7 @@ guint      S57_getS57ID(_S57_geo *geo)
 //    return  geo->S57ID;
     return (*(guint *)geo);
 }
-#endif  // S52_DEBUG
+//#endif  // S52_DEBUG
 
 static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
 {

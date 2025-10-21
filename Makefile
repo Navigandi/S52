@@ -320,7 +320,7 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_AFGLOW               \
                   -DS52_USE_RASTER               \
                   -DS52_USE_SUPP_LINE_OVERLAP    \
-                  -DS52_USE_C_AGGR_C_ASSO        \
+#                  -DS52_USE_C_AGGR_C_ASSO        \
                   -DS52_DEBUG $(DBG)
 
 # CFLAGS="-mthumb" CXXFLAGS="-mthumb" LIBS="-lstdc++" ./configure --host=arm-eabi \

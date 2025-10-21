@@ -31,7 +31,7 @@
 #include <glib.h>
 #include <math.h>           // INFINITY
 #include <strings.h>        // bzero()
-
+#include <stdio.h>
 
 #define S52_COL_NUM   63    // number of color (#64 is transparent)
 #define S52_LUP_NMLN   6    // lookup name lenght
@@ -222,7 +222,7 @@ typedef union _cmdDef {
 typedef struct _cmdWL {
     S52_CmdWrd     cmdWord;  // Command Word type
     const char    *param;    // start of parameter for this command
-
+    GString       *parsed;
     _cmdDef        cmd;      // command word definition or conditional symb func call
     // FIXME: invariant for cmdWord --> cmd
     //S52_CMD_TXT_TX,     // TX --SHOWTEXT (formated)
@@ -965,6 +965,7 @@ static _cmdWL    *_parseINST(GString *inst, gint *hasText)
         if (NULL == cmd)
             g_assert(0);
 
+        cmd->parsed = NULL;
         ////////////////////////////////
         // Note: command might repeat except:
         //  -S52_CMD_COM_LN: complex line,
@@ -1045,6 +1046,9 @@ static int        _freeCmdList(_cmdWL *top)
 {
    while (top != NULL) {
       _cmdWL *cmd = top->next;
+      if (top->parsed != NULL) {
+        g_string_free(top->parsed, TRUE);
+      }
       g_free(top);
       top = cmd;
    }
@@ -2229,11 +2233,11 @@ YOFFS "y-offset" parameter:
 
 // gimp/libgimpcolor/gimpcolortransform.c
 // LCMS: Little Color Management System --> lcms
-#ifdef S52_USE_LCMS2
+//#ifdef S52_USE_LCMS2
 #include "lcms2.h"
-#else
-#include "lcms.h"
-#endif
+//#else
+//#include "lcms.h"
+//#endif
 static cmsHTRANSFORM _XYZ2RGB   = NULL;
 static int           _lcmsError = FALSE;   // TRUE an error occur in lcms
 
@@ -2917,9 +2921,9 @@ static int        _linkLUP(_S52_obj *obj, int alt)
     CCHAR   *objName = S57_getName(obj->geo);
 
     // optimisation: no reparse of lines INST
-    //if (S57_LINES_T==S57_getObjtype(obj->geo) && 1==alt) {
-    //    return TRUE;
-    //}
+    if (S57_LINES_T==S57_getObjtype(obj->geo) && 1==alt) {
+       return TRUE;
+    }
 
     // find proper LUP table for this type of S57 object
     switch (S57_getObjtype(obj->geo)) {
@@ -3380,6 +3384,38 @@ S52_CmdWrd  S52_PL_iniCmd(_S52_obj *obj)
     return cmdW;
 }
 
+const char* S52_PL_getCmdParsed(_S52_obj *obj)
+{
+    return_if_null(obj);
+
+    if (obj->crntAidx < obj->crntA->len) {
+        _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
+        if (cmd->parsed == NULL) {
+            char* cmd_str = S52_PL_getCMDstr(obj);
+            if (cmd_str == NULL)
+                return NULL;
+            char* start = cmd_str;
+            int i = -1;
+
+            while (*cmd_str != NULL && i != obj->crntAidx) {
+                if (*cmd_str == ';') {
+                    ++i;
+                    if (i != obj->crntAidx)
+                        start = cmd_str + 1;
+                }
+                cmd_str++;
+            }
+            
+            cmd->parsed = g_string_new(NULL);
+            if (start != cmd_str)
+                g_string_append_len(cmd->parsed, start, cmd_str-start);
+        }
+        return cmd->parsed->str;
+    }
+
+    return NULL;
+}
+
 S52_CmdWrd  S52_PL_getCmdNext(_S52_obj *obj)
 {
     return_if_null(obj);
@@ -3573,8 +3609,14 @@ double      S52_PL_getSYorient(_S52_obj *obj)
 
                     if (NULL == str)
                         obj->auxInfo.orient = noOrient;
-                    else
-                        S52_PL_setSYorient(obj, S52_atof(val));
+                    else {
+                        // SUBSTITUI ATTRIB VALUE NO TEXTO E GERA NOVA INSTRUCAO NO CAMPO 'parsed'
+                        cmd->parsed = g_string_new("SY(");
+                        g_string_append_len(cmd->parsed, cmd->param, 9);
+                        g_string_append(cmd->parsed, val);
+                        g_string_append_c(cmd->parsed, ')');
+                    }
+                        //S52_PL_setSYorient(obj, S52_atof(val));
 
                 } else {
                     // debug - search for alternative orient, heading, ...
@@ -4332,6 +4374,12 @@ static _Text     *_parseTX(S57_geo *geo, _cmdWL *cmd)
     // FIXME: move this dup code in _parseTE/_parseTX to
     text = _convertTEXT(geo, text, buf);
 
+    // SUBSTITUI ATTRIB VALUE NO TEXTO E GERA NOVA INSTRUCAO NO CAMPO 'parsed'
+    cmd->parsed = g_string_new("TX(");
+    g_string_append(cmd->parsed, text->frmtd->str);
+    g_string_append_c(cmd->parsed, ',');
+    g_string_append(cmd->parsed, str);
+    
     return text;
 }
 
@@ -4406,6 +4454,12 @@ static _Text     *_parseTE(S57_geo *geo, _cmdWL *cmd)
 
     // FIXME: move this dup code in _parseTE/_parseTX to _convertTEXT(geo, text, buf);
     text = _convertTEXT(geo, text, buf);
+
+    // SUBSTITUI ATTRIB VALUE NO TEXTO E GERA NOVA INSTRUCAO NO CAMPO 'parsed'
+    cmd->parsed = g_string_new("TX(");
+    g_string_append(cmd->parsed, text->frmtd->str);
+    g_string_append_c(cmd->parsed, ',');
+    g_string_append(cmd->parsed, str);
 
     return text;
 }

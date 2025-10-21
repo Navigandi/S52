@@ -27,7 +27,7 @@
 
 #include "S57data.h"    // S57_geo
 #include "S52.h"        // S52_loadLayer_cb, S52_loadObj_cb
-
+#include "S57ogr.h"
 //#include "gvshapeslayer.h"  // GvShapesLayerClass, GvShapesLayer, GvShapes
 
 

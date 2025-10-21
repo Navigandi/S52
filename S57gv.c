@@ -28,10 +28,10 @@
 #include "S57data.h"         // S57_geo
 #include "S52utils.h"        // PRINTF()
                              
-#include "gvproperties.h"    // gv_properties_*()
+//#include "gvproperties.h"    // gv_properties_*()
 
-#include "gvshapes.h"        // GvShapes, GvShape, gv_shape_get_extents()
-#include "gvshapeslayer.h"   // GvShapesLayer,
+//#include "gvshapes.h"        // GvShapes, GvShape, gv_shape_get_extents()
+//#include "gvshapeslayer.h"   // GvShapesLayer,
 
 
 // this is more 'computed and get' then a getter

@@ -1,0 +1,7 @@
+{
+  "name": "libs52",
+  "version": "1.0.0",
+  "dependencies" : {
+    "swig": "4.0.2"
+  }
+}

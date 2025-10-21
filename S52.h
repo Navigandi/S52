@@ -48,6 +48,9 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
+
+
 typedef enum S52ObjectType {
     S52__META  = 0,         // meta geo stuff (ex: C_AGGR)
     S52_AREAS  = 1,
@@ -189,6 +192,7 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
     S52_MAR_DISP_LAYER_LAST_OTHER  = 1 << 5,   // 0x0020 - MARINERS' OTHER
     S52_MAR_DISP_LAYER_LAST_SELECT = 1 << 6    // 0x0040 - MARINERS' SELECT
 } S52_MAR_DISP_CATEGORY_t;
+
 
 
 /**
@@ -474,6 +478,8 @@ DLL int    STD S52_done(void);
  * Return: TRUE on success, else FALSE
  */
 int            S52_loadObject(const char *objname, /* OGRFeatureH */ void *feature);
+
+
 
 /**
  * S52_loadObject_cb:
@@ -1081,6 +1087,21 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
  */
 DLL int    STD S52_newCSYMB(void);
 
+
+
+
+//#include <S52PL.h>
+//#include <S57data.h>
+
+//DLL void S52_init(const char* PLib_file);
+
+// load supplemental PLib
+//int            S52_PL_load(const char *PLib);
+
+DLL void* S52_getObject(const char *objname, /* OGRFeatureH */ void *feature);
+DLL void S52_processObject(void* obj, void *);
+void* parseObj(const char* objname, void* geo);
+void call_app();
 
 #ifdef __cplusplus
 }

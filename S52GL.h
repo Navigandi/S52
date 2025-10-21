@@ -69,14 +69,14 @@ typedef enum S52_GL_cycle {
 } S52_GL_cycle;
 
 
-int   S52_GL_init(void);
-int   S52_GL_done(void);  // flush GL objects, clean up mem
-int   S52_GL_setDotPitch(int w, int h, int wmm, int hmm);
+// int   S52_GL_init(void);
+// int   S52_GL_done(void);  // flush GL objects, clean up mem
+// int   S52_GL_setDotPitch(int w, int h, int wmm, int hmm);
 
 // -- framebuffer stuff --------------------------------
 // init frame, save OpenGL state
 // when mode is S52_GL_LAST pull the FB of Draw() from GPU memory
-int   S52_GL_begin(S52_GL_cycle cycle);
+//int   S52_GL_begin(S52_GL_cycle cycle);
 // render an object to framebuffer
 int   S52_GL_draw(S52_obj *obj, gpointer user_data);
 // draw text
@@ -84,68 +84,68 @@ int   S52_GL_drawText(S52_obj *obj, gpointer user_data);
 
 #ifdef S52_USE_RASTER
 // draw RADAR,Bathy,...
-int   S52_GL_drawRaster(S52_GL_ras *raster);
+//int   S52_GL_drawRaster(S52_GL_ras *raster);
 #endif  // S52_USE_RASTER
 
-int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north);
+//int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north);
 //int   S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize, unsigned int weight);
-int   S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize);
-int   S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str);
+//int   S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize);
+//int   S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str);
 // done frame, restore OpenGL state
-int   S52_GL_end(S52_GL_cycle cycle);
+//int   S52_GL_end(S52_GL_cycle cycle);
 
 // debug
-int   S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height);
+//int   S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height);
 
 // ----------------------------------
 
-int   S52_GL_isSupp(S52_obj *obj);
-int   S52_GL_isOFFview(S52_obj *obj);
+// int   S52_GL_isSupp(S52_obj *obj);
+// int   S52_GL_isOFFview(S52_obj *obj);
 
-// delete GL data of object (DL of geo)
-int   S52_GL_delDL(S52_obj *obj);
+// // delete GL data of object (DL of geo)
+// int   S52_GL_delDL(S52_obj *obj);
 
-#ifdef S52_USE_RASTER
-S52_GL_ras *S52_GL_newRaster(char *fnameMerc);
-// FIXME: update raster
-int   S52_GL_udtRaster(S52_GL_ras *raster);
-// delete raster
-//int   S52_GL_delRaster(S52_GL_ras *raster, int texOnly);
-int   S52_GL_delRaster(S52_GL_ras *raster);
-#endif  // S52_USE_RASTER
+// #ifdef S52_USE_RASTER
+// S52_GL_ras *S52_GL_newRaster(char *fnameMerc);
+// // FIXME: update raster
+// int   S52_GL_udtRaster(S52_GL_ras *raster);
+// // delete raster
+// //int   S52_GL_delRaster(S52_GL_ras *raster, int texOnly);
+// int   S52_GL_delRaster(S52_GL_ras *raster);
+// #endif  // S52_USE_RASTER
 
-int   S52_GL_setView(double  centerLat, double  centerLon, double  rangeNM, double  north);
-int   S52_GL_getView(double *centerLat, double *centerLon, double *rangeNM, double *north);
+// int   S52_GL_setView(double  centerLat, double  centerLon, double  rangeNM, double  north);
+// int   S52_GL_getView(double *centerLat, double *centerLon, double *rangeNM, double *north);
 
-int   S52_GL_setPRJView(double  s, double  w, double  n, double  e);
-int   S52_GL_getPRJView(double *s, double *w, double *n, double *e);
-int   S52_GL_setGEOView(double  s, double  w, double  n, double  e);
-int   S52_GL_getGEOView(double *s, double *w, double *n, double *e);
+// int   S52_GL_setPRJView(double  s, double  w, double  n, double  e);
+// int   S52_GL_getPRJView(double *s, double *w, double *n, double *e);
+// int   S52_GL_setGEOView(double  s, double  w, double  n, double  e);
+// int   S52_GL_getGEOView(double *s, double *w, double *n, double *e);
 
-int   S52_GL_win2prj(double *x, double *y);
-int   S52_GL_prj2win(double *x, double *y);
+// int   S52_GL_win2prj(double *x, double *y);
+// int   S52_GL_prj2win(double *x, double *y);
 
-int   S52_GL_setViewPort(int  x, int  y, int  width, int  height);
-int   S52_GL_getViewPort(int *x, int *y, int *width, int *height);
+// int   S52_GL_setViewPort(int  x, int  y, int  width, int  height);
+// int   S52_GL_getViewPort(int *x, int *y, int *width, int *height);
 
-int   S52_GL_setScissor(int x, int y, int width, int height);
+// int   S52_GL_setScissor(int x, int y, int width, int height);
 
 // return the name of the stack top object
-const
-char *S52_GL_getNameObjPick(void);
+// const
+// char *S52_GL_getNameObjPick(void);
 
-int   S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *str);
+// int   S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *str);
 
-int   S52_GL_drawGraticule(void);
+// int   S52_GL_drawGraticule(void);
 
-int   S52_GL_isHazard(int nxyz, pt3 *pt);
+// int   S52_GL_isHazard(int nxyz, pt3 *pt);
 
 // -------- GLU ------------
 // helper for CS DATCVR01 -
 // CSG - Computational Solid Geometry
-void  S52_GLU_begUnion(void);
-void  S52_GLU_addUnion(S57_geo *geo);
-//void  S52_GLU_addUnion(guint  npt, double  *ppt);
-void  S52_GLU_endUnion(guint *npt, double **ppt);
+// void  S52_GLU_begUnion(void);
+// void  S52_GLU_addUnion(S57_geo *geo);
+// //void  S52_GLU_addUnion(guint  npt, double  *ppt);
+// void  S52_GLU_endUnion(guint *npt, double **ppt);
 
 #endif // _S52GL_H_

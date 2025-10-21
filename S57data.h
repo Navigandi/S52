@@ -104,6 +104,9 @@ typedef struct _pt2v { vertex_t x,y;   } pt2v; // used in _renderAP_NODATA_layer
 typedef struct _pt3  { double   x,y,z; } pt3;  // used in all files
 typedef struct _pt3v { vertex_t x,y,z; } pt3v; // used in all files
 
+
+static int _initPROJ();
+
 int       S57_doneData(S57_geo *geo, gpointer user_data);
 
 S57_geo  *S57_setPOINT(geocoord *xyz);
@@ -201,21 +204,21 @@ S57_geo  *S57_getRelationship(S57_geo *geo);
 int       S57_dumpData(S57_geo *geo, int dumpCoords);
 
 // get the first field of S57_geo
-#ifdef S52_DEBUG
+//#ifdef S52_DEBUG
 guint     S57_getS57ID(S57_geo *geo);
-#else
-#define   S57_getS57ID(geo) (*(guint *)geo)
-#endif  // S52_DEBUG
+//#else
+//#define   S57_getS57ID(geo) (*(guint *)geo)
+//#endif  // S52_DEBUG
 
-#ifdef S52_USE_PROJ
-#include <proj_api.h>   // projXY, projUV, projPJ
-int       S57_donePROJ(void);
-int       S57_setMercPrj(double lat, double lon);
-CCHAR    *S57_getPrjStr(void);
-projXY    S57_prj2geo(projUV uv);
-int       S57_geo2prj3dv(guint npt, pt3 *data);
-int       S57_geo2prj(S57_geo *geo);
-#endif  // S52_USE_PROJ
+//#ifdef S52_USE_PROJ
+//#include <proj.h>   // projXY, projUV, projPJ
+// int       S57_donePROJ(void);
+// int       S57_setMercPrj(double lat, double lon);
+// CCHAR    *S57_getPrjStr(void);
+// PJ_COORD S57_prj2geo(projUV uv);
+// int       S57_geo2prj3dv(guint npt, pt3 *data);
+// int       S57_geo2prj(S57_geo *geo);
+//#endif  // S52_USE_PROJ
 
 gboolean  S57_isPtInArea(S57_geo *geo, double x, double y);
 gboolean  S57_isPtInRing(guint npt, pt3 *pt, gboolean close, double x, double y);

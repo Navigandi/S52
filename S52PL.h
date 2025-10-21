@@ -230,6 +230,9 @@ S52_CmdWrd     S52_PL_iniCmd(S52_obj *obj);
 // get next command word in the list
 S52_CmdWrd     S52_PL_getCmdNext(S52_obj *obj);
 
+// NEW !!!!!
+const char* S52_PL_getCmdParsed(S52_obj *obj);
+
 // compare name to parameter of current command word
 int            S52_PL_cmpCmdParam   (S52_obj *obj, const char *name);  // 8 chars
 int            S52_PL_cmpCmdParamLUP(S52_obj *obj, const char *name);  // 8 chars

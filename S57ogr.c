@@ -28,6 +28,7 @@
 
 #include <glib.h>       // GPtrArray
 
+
 // WARNING: must be in sync with S52.c:WORLD_SHP
 #define WORLD_BASENM   "--0WORLD"
 
@@ -211,6 +212,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
         // POINT
         case wkbPoint25D:
         case wkbPoint: {
+#if 2
             geocoord *pointxyz = g_new(geocoord, 3);
 
             pointxyz[0] = OGR_G_GetX(hGeom, 0);
@@ -219,13 +221,16 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
 
             geo = S57_setPOINT(pointxyz);
             _setExtent(geo, hGeom);
-
+#else
+            geo = S57_setPOINT(0);
+#endif
             break;
         }
 
         // LINE
         case wkbLineString25D:
         case wkbLineString: {
+#if 2
             int count = OGR_G_GetPointCount(hGeom);
 
             // Note: when S52_USE_SUPP_LINE_OVERLAP then Edge might have 0 node
@@ -248,15 +253,17 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
             }
 
             geo = S57_setLINES(count, linexyz);
-
             _setExtent(geo, hGeom);
-
+#else
+            geo = S57_setLINES(0, 0);
+#endif
             break;
         }
 
         // AREA
         case wkbPolygon25D:
         case wkbPolygon: {
+#if 2
             // Note: S57 area have CW outer ring and CCW inner ring
             guint        nRingCount = OGR_G_GetGeometryCount(hGeom);
             guint       *ringxyznbr;
@@ -367,8 +374,10 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
 
             //geo = S57_setAREAS(nRingCount, ringxyznbr, ringxyz, (area <= 0.0) ? S57_AW_CW : S57_AW_CCW);
             geo = S57_setAREAS(nRingCount, ringxyznbr, ringxyz);
-
             _setExtent(geo, hGeom);
+#else
+            geo = S57_setAREAS(0, 0, 0);
+#endif
 
 #ifdef S52_USE_WORLD
             if (0 == g_strcmp0(WORLD_BASENM, objname)) {

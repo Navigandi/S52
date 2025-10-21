@@ -58,7 +58,7 @@
 #include "gdal.h"       // GDAL_RELEASE_NAME and handle Raster
 
 #ifdef S52_USE_PROJ
-#include <proj_api.h>   // projUV, projXY, projPJ
+//#include <proj.h>   // projUV, projXY, projPJ
 #else
 typedef struct { double u, v; } projUV;
 #define projXY projUV
@@ -141,9 +141,9 @@ typedef struct _cell {
 
     GString   *S57ClassList;   // hold the names of S57 class of this cell
 
-#ifdef S52_USE_PROJ
+//#ifdef S52_USE_PROJ
     int        projDone;       // TRUE this cell has been projected
-#endif
+//#endif
 
     /*
     // optimisation - do CS only on obj affected by a change in a MP
@@ -569,9 +569,9 @@ static _cell     *_newCell(const char *filename)
         cell->textList     = g_ptr_array_new();
 
         cell->S57ClassList = g_string_new("");
-
+#ifdef S52_USE_PROJ
         cell->projDone     = FALSE;
-
+#endif // S52_USE_PROJ
         /*
         cell->DEPARElist = g_ptr_array_new();
         cell->DEPCNTlist = g_ptr_array_new();
@@ -592,7 +592,7 @@ static void       _delObj(S52_obj *obj)
 {
     //(void)user_data;
 
-    S52_GL_delDL(obj);
+   // S52_GL_delDL(obj);
 
     // Note: cleanup here, can't be done in PL - collision
     S57_geo *geo = S52_PL_delObj(obj, TRUE);
@@ -639,46 +639,47 @@ static void       _freeCell(_cell *c)
 }
 
 static ObjExt_t   _getCellsExt(void);  // forward decl
-static int        _initPROJview(void)
-{
-    // skip if Projection allready set
-    if (NULL != S57_getPrjStr())
-        return TRUE;
+// static int        _initPROJview(void)
+// {
+//     // skip if Projection allready set
+//     // if (NULL != S57_getPrjStr())
+//     //     return TRUE;
 
-    ObjExt_t ext = _getCellsExt();
-    double cLat  =  (ext.N + ext.S) / 2.0;
-    double cLon  =  (ext.W + ext.E) / 2.0;
-    double rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
-    double north = 0.0;
-    S52_GL_setView(cLat, cLon, rNM, north);
+//     ObjExt_t ext = _getCellsExt();
+//     double cLat  =  (ext.N + ext.S) / 2.0;
+//     double cLon  =  (ext.W + ext.E) / 2.0;
+//     double rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
+//     double north = 0.0;
+//     //S52_GL_setView(cLat, cLon, rNM, north);
 
-    // FIXME: cLon break bathy projection
-    // anti-meridian trick: use cLon, but this break bathy
-    S57_setMercPrj(cLat, cLon);
-    //S57_setMercPrj(0.0, cLon); // test - 0 cLat
-    //S57_setMercPrj(0.0, 0.0);  // test - 0 cLat
+//     // FIXME: cLon break bathy projection
+//     // anti-meridian trick: use cLon, but this break bathy
+//     //S57_setMercPrj(cLat, cLon);
+//     //S57_setMercPrj(0.0, cLon); // test - 0 cLat
+//     //S57_setMercPrj(0.0, 0.0);  // test - 0 cLat
 
-    return TRUE;
-}
+//     return TRUE;
+// }
 
 //void (*GFunc) (gpointer data, gpointer user_data);
-static void       _S57_geo2prj(S52_obj *obj, gpointer dummy) {(void)dummy; S57_geo2prj(S52PLGETGEO(obj));}
-static int        _projectCells(void)
-{
-    for (guint k=0; k<_cellList->len; ++k) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
-        if (FALSE == c->projDone) {
-            TRAV_RBIN_ij(g_ptr_array_foreach(c->renderBin[i][j], (GFunc)_S57_geo2prj, NULL));
+// #ifdef S52_USE_PROJ
+// static void       _S57_geo2prj(S52_obj *obj, gpointer dummy) {(void)dummy; S57_geo2prj(S52PLGETGEO(obj));}
+// static int        _projectCells(void)
+// {
+//     for (guint k=0; k<_cellList->len; ++k) {
+//         _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
+//         if (FALSE == c->projDone) {
+//             TRAV_RBIN_ij(g_ptr_array_foreach(c->renderBin[i][j], (GFunc)_S57_geo2prj, NULL));
 
-            g_ptr_array_foreach(c->lights_sector, (GFunc)_S57_geo2prj, NULL);
+//             g_ptr_array_foreach(c->lights_sector, (GFunc)_S57_geo2prj, NULL);
 
-            c->projDone = TRUE;
-        }
-    }
+//             c->projDone = TRUE;
+//         }
+//     }
 
-    return TRUE;
-}
-
+//     return TRUE;
+// }
+// #endif
 static void       _S52_CS_touch(S52_obj *obj, localObj *local) {S52_CS_touch(local, S52PLGETGEO(obj));}
 static int        _collect_CS_touch(_cell* c)
 // setup object used by CS
@@ -704,6 +705,8 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
         return FALSE;
     }
 
+    //_initPROJ();
+
 #ifdef S52_DEBUG
     // FIXME: check timming, might be slower, write() immediatly
     //setbuf(stdout, NULL);
@@ -711,7 +714,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     //gsetbuf(stdout, NULL);
 #endif
 
-    S52_utils_initLog(log_cb);
+    //S52_utils_initLog(log_cb);
 
     PRINTF("screen_pixels_w: %i, screen_pixels_h: %i, screen_mm_w: %i, screen_mm_h: %i\n",
             screen_pixels_w,     screen_pixels_h,     screen_mm_w,     screen_mm_h);
@@ -722,13 +725,13 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
         return FALSE;
     }
 
-#if !defined(S52_USE_MINGW)
-    // check if run as root
-    if (0 == getuid()) {
-        PRINTF("WARNING: do NOT run as SUPERUSER (root) .. exiting\n");
-        return FALSE;
-    }
-#endif
+// #if !defined(S52_USE_MINGW)
+//     // check if run as root
+//     if (0 == getuid()) {
+//         PRINTF("WARNING: do NOT run as SUPERUSER (root) .. exiting\n");
+//         return FALSE;
+//     }
+// #endif
 
     ///////////////////////////////////////////////////////////
     //
@@ -766,9 +769,9 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     hmm = 3;
 #endif
 
-    S52_GL_setDotPitch(screen_pixels_w, screen_pixels_h, screen_mm_w, screen_mm_h);
+    //S52_GL_setDotPitch(screen_pixels_w, screen_pixels_h, screen_mm_w, screen_mm_h);
 
-    S52_GL_setViewPort(0, 0, screen_pixels_w, screen_pixels_h);
+    //S52_GL_setViewPort(0, 0, screen_pixels_w, screen_pixels_h);
 
 
     ///////////////////////////////////////////////////////////
@@ -900,14 +903,14 @@ DLL int    STD S52_done(void)
     _cellList    = NULL;
     _marinerCell = NULL;
 
-    S52_GL_done();
+    //S52_GL_done();
     S52_PL_done();
 
-    S57_donePROJ();
+    //S57_donePROJ();
 
     _intl   = NULL;
 
-    S52_utils_doneLog();
+    //S52_utils_doneLog();
 
     g_timer_destroy(_timer);
     _timer = NULL;
@@ -925,19 +928,19 @@ DLL int    STD S52_done(void)
     g_string_free(_S57ClassList, TRUE); _S57ClassList = NULL;
     g_string_free(_S52ObjNmList, TRUE); _S52ObjNmList = NULL;
 
-#if !defined(S52_USE_ANDROID)
-    // flush raster (bathy,..)
-    // FIXME: foreach
-    // this call free_func() if set
-    for (guint i=0; i<_rasterList->len; ++i) {
-        S52_GL_ras *r = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
-        //S52_GL_delRaster(r, FALSE);
-        S52_GL_delRaster(r);
-    }
-    // this call free_func() if set
-    g_ptr_array_free(_rasterList, TRUE);
-    _rasterList = NULL;
-#endif  // !S52_USE_ANDROID
+// #if !defined(S52_USE_ANDROID)
+//     // flush raster (bathy,..)
+//     // FIXME: foreach
+//     // this call free_func() if set
+//     for (guint i=0; i<_rasterList->len; ++i) {
+//         S52_GL_ras *r = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
+//         //S52_GL_delRaster(r, FALSE);
+//         S52_GL_delRaster(r);
+//     }
+//     // this call free_func() if set
+//     g_ptr_array_free(_rasterList, TRUE);
+//     _rasterList = NULL;
+// #endif  // !S52_USE_ANDROID
 
     // obj allready deleted
     g_ptr_array_free(_tmpRenderBin, TRUE);
@@ -1360,7 +1363,7 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
     }
 #endif
 
-    _collect_CS_touch(c);
+    //_collect_CS_touch(c);
 
 
     {   // failsafe - check if a PLib put an object on the NODATA layer
@@ -1885,11 +1888,11 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 #endif  // S52_USE_OGR_FILECOLLECTOR
 
 #ifdef S52_USE_PROJ
-    if (TRUE == _initPROJview()) {
-        ret = _projectCells();
-    } else {
-        goto exit;
-    }
+    // if (TRUE == _initPROJview()) {
+    //     ret = _projectCells();
+    // } else {
+    //     goto exit;
+    // }
 #endif  // S52_USE_PROJ
 
 
@@ -2416,6 +2419,106 @@ static S52_obj   *_insertS52obj(_cell *c, S52_obj *obj)
     return obj;
 }
 
+
+DLL void* S52_getObject(const char *objname, /* OGRFeatureH */ void *feature)
+{
+     S57_geo *geo = NULL;
+
+    if ((NULL==objname) || (NULL==feature)) {
+        PRINTF("WARNING: objname / shape NULL\n");
+        return FALSE;
+    }
+
+    geo = S57_ogrLoadObject(objname, (void*)feature);
+    
+     if (NULL == geo) {
+        PRINTF("OBJNAME:%s skipped .. no geo\n", objname);
+        return FALSE;
+    }
+
+    
+
+    S52_obj* obj = parseObj(objname, geo); //S52_PL_newObj(geo);
+    
+    // flag that all obj texts has been parsed
+    //S52_PL_setTextParsed(obj);
+
+
+// //     S52_Color   *color  = NULL;
+// //     int          xoffs  = 0;
+// //     int          yoffs  = 0;
+// //     unsigned int bsize  = 0;
+// //     unsigned int weight = 0;
+// //     int          disIdx = 0;  // text view group
+// //     //const char  *str    = S52_PL_getEX(obj, &color, &xoffs, &yoffs, &bsize, &weight, &disIdx);
+// //     const char  *str    = S52_PL_getText(obj, &color, &xoffs, &yoffs, &bsize, &weight, &disIdx);
+
+
+
+   
+    
+    return obj;
+}
+
+DLL void S52_processObject(void* p, void*)
+{
+    S52_obj* obj = (S52_obj*)p;
+
+    printf("\nFID = %d ", S57_getS57ID(S52_PL_getGeo(obj)));
+
+    if (5809 == S57_getS57ID(S52_PL_getGeo(obj))) {
+        obj = obj;
+        const char* p = S52_PL_getCMDstr(obj);
+        obj = obj;
+    }
+
+    S52_PL_resolveSMB(obj, NULL);
+   
+    S52_CmdWrd cmdWrd = S52_PL_iniCmd(obj);
+
+    if (cmdWrd != S52_CMD_NONE) {
+        const char *cmd = S52_PL_getCMDstr(obj);
+    }
+
+    int i = 0;
+    while (S52_CMD_NONE != cmdWrd) {
+        int viewingGroup = S52_PL_getLUCM(obj);
+        int displayPriority = S52_PL_getDPRI(obj);
+        char radarOverlay = S52_PL_getRPRI(obj);
+
+        switch (cmdWrd) {
+
+            case S52_CMD_SYM_PT: {
+
+                S52_PL_getSYorient(obj);
+                printf("CMD %d = %s ", i, S52_PL_getCmdParsed(obj));
+               
+            }  break;
+            case S52_CMD_TXT_TX:
+            case S52_CMD_TXT_TE: {
+                S52_Color   *color  = NULL;
+                int          xoffs  = 0;
+                int          yoffs  = 0;
+                unsigned int bsize  = 0;
+                unsigned int weight = 0;
+                int          disIdx = 0;  // text view group
+                const char* txt = S52_PL_getText(obj, &color, &xoffs, &yoffs, &bsize, &weight, &disIdx);
+                if (txt != NULL)
+                    printf("CMD %d = %s ", i, S52_PL_getCmdParsed(obj));
+                
+            } break;
+            default: 
+                printf("CMD %d = %s ", i, S52_PL_getCmdParsed(obj) );
+            break;
+        }
+        i++;
+        cmdWrd = S52_PL_getCmdNext(obj);
+    }
+
+}
+
+
+
 //DLL int    STD S52_loadObject(const char *objname, void *shape)
 int            S52_loadObject(const char *objname, void *shape)
 {
@@ -2435,6 +2538,14 @@ int            S52_loadObject(const char *objname, void *shape)
 #else
     geo = S57_ogrLoadObject(objname, (void*)shape);
 #endif
+
+   return parseObj(objname, geo) != NULL;
+}
+
+void* parseObj(const char* objname, void* obj)
+{
+
+    S57_geo* geo = (S57_geo*)obj;
 
     if (NULL == geo) {
         PRINTF("OBJNAME:%s skipped .. no geo\n", objname);
@@ -2603,7 +2714,7 @@ int            S52_loadObject(const char *objname, void *shape)
     }
 #endif
 
-    _insertS57geo(_crntCell, geo);
+    S52_obj* result = _insertS57geo(_crntCell, geo);
 
     S52_CS_add(_crntCell->local, geo);
 
@@ -2621,7 +2732,7 @@ int            S52_loadObject(const char *objname, void *shape)
     //--------------------------------------------------
 #endif  // S52_USE_C_AGGR_C_ASSO
 
-    return TRUE;
+    return result;
 }
 
 
@@ -2764,7 +2875,7 @@ static int        _appHODATA(GArray *sclbdyList)
     // GLU_TESS_WINDING_NONZERO or GLU_TESS_WINDING_POSITIVE winding rules.
 
     // begin union
-    S52_GLU_begUnion();
+    //S52_GLU_begUnion();
 
     // skip Mariners Cell
     //for (guint i=0; i<_cellList->len; ++i) {
@@ -2789,7 +2900,7 @@ static int        _appHODATA(GArray *sclbdyList)
                 GString *catcovstr = S57_getAttVal(geo, "CATCOV");
                 if ((NULL!=catcovstr) && ('1'==*catcovstr->str)) {
                     // add this M_COVR to HO data limit set
-                    S52_GLU_addUnion(geo);
+                    //S52_GLU_addUnion(geo);
 
                     // SCALE BOUNDARIES: system generated CS DATCVR01-3
                     // add this M_COVR to scale Boundary if
@@ -2807,7 +2918,7 @@ static int        _appHODATA(GArray *sclbdyList)
     // (ie: 2 non-overlap poly!)
     guint   npt = 0;
     double *ppt = NULL;
-    S52_GLU_endUnion(&npt, &ppt);
+    //S52_GLU_endUnion(&npt, &ppt);
     if (0 == npt)
         return FALSE;
 
@@ -2849,7 +2960,7 @@ static int        _appSclbdU(GArray *sclbdyList, GArray *sclbdUList)
     //*
     for (guint i=0; i<sclbdyList->len; ++i) {
         // begin sclbdy union
-        S52_GLU_begUnion();
+        //S52_GLU_begUnion();
 
         S52ObjectHandle sclbdyH = (S52ObjectHandle) g_array_index(sclbdyList, unsigned int, i);
         while ((INTU_SEP!=sclbdyH) && (i<sclbdyList->len)) {
@@ -2858,7 +2969,7 @@ static int        _appSclbdU(GArray *sclbdyList, GArray *sclbdUList)
             S52_obj *obj = S52_PL_isObjValid(sclbdyH);
             S57_geo *geo = S52_PL_getGeo(obj);
 
-            S52_GLU_addUnion(geo);
+            //S52_GLU_addUnion(geo);
             // all obj after i are of sclbdyH, union them
             PRINTF("DEBUG: add sclbdy from %s:%i\n", S57_getName(geo), S57_getS57ID(geo));
 
@@ -2869,7 +2980,7 @@ static int        _appSclbdU(GArray *sclbdyList, GArray *sclbdUList)
         // FIXME: what if more than 1 poly
         guint   npt = 0;
         double *ppt = NULL;
-        S52_GLU_endUnion(&npt, &ppt);
+        //S52_GLU_endUnion(&npt, &ppt);
         if (0 == npt) {
             PRINTF("DEBUG: 'sclbdU' no poly\n");
             continue;
@@ -2978,19 +3089,19 @@ static int        _app(void)
         _APP_CS = FALSE;
     }
 
-#if !defined(S52_USE_ANDROID)
-    // 2.3 - texApha, when raster is bathy,
-    // if S52_MAR_SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR / S52_MAR_DATUM_OFFSET has change
-    if (TRUE == _APP_RASTER) {
-        // foreach
-        for (guint i=0; i<_rasterList->len; ++i) {
-            S52_GL_ras *ras = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
-            //S52_GL_delRaster(ras, TRUE);
-            S52_GL_udtRaster(ras);
-        }
-        _APP_RASTER = FALSE;
-    }
-#endif  // !S52_USE_ANDROID
+// #if !defined(S52_USE_ANDROID)
+//     // 2.3 - texApha, when raster is bathy,
+//     // if S52_MAR_SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR / S52_MAR_DATUM_OFFSET has change
+//     if (TRUE == _APP_RASTER) {
+//         // foreach
+//         for (guint i=0; i<_rasterList->len; ++i) {
+//             S52_GL_ras *ras = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
+//             //S52_GL_delRaster(ras, TRUE);
+//             S52_GL_udtRaster(ras);
+//         }
+//         _APP_RASTER = FALSE;
+//     }
+// #endif  // !S52_USE_ANDROID
 
     ////////////////////////////////////////////////////
     //
@@ -3044,772 +3155,772 @@ static int        _resetJournal(void)
     return TRUE;
 }
 
-static int        _cullLights(void)
-// CULL (first draw() after APP, on all cells)
-{
-    if (FALSE == _CULL_Lights)
-        return FALSE;
-    _CULL_Lights = FALSE;
-
-    for (guint i=_cellList->len-1; i>0; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-
-        // FIXME: use foreach()
-        for (guint j=0; j<c->lights_sector->len; ++j) {
-            S52_obj *obj  = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
-            S57_geo *geo  = S52_PL_getGeo(obj);
-            ObjExt_t oext = S57_getGeoExt(geo);
-
-            S52_PL_resolveSMB(obj, NULL);
-
-            // debug - traverse the cell 'above' to check if extent overlap this light
-            for (guint k=i-1; k>0 ; --k) {
-                _cell *cellAbove = (_cell*) g_ptr_array_index(_cellList, k);
-                // skip if same scale
-                if (*cellAbove->legend.dsid_intustr->str > *c->legend.dsid_intustr->str) {
-                    if (TRUE == _intersectCELL(cellAbove->geoExt, oext)) {
-                        // check this: a chart above this light sector
-                        // does not have the same lights (this would be a bug in S57)
-                        S52_PL_setSupp(obj, TRUE);
-
-                        g_assert(0);
-                    }
-                }
-            }
-        }
-        // g_ptr_array_foreach(c->lights_sector, (GFunc) _resolveLights, NULL);
-    }
-
-    return TRUE;
-}
-
-static int        _cullObj(_cell *c, GPtrArray *rbin)
-//static int        _cullObj(S52_obj *obj, _cell *c)
-// cull object out side the view and object supressed
-// object culled are not inserted in the list of object to draw (journal)
-{
-    // for each object
-    for (guint idx=0; idx<rbin->len; ++idx) {
-        S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-
-        // debug: can this happen!
-        if (NULL == obj) {
-            PRINTF("DEBUG: skip NULL obj\n");
-            g_assert(0);
-            continue;
-        }
-
-        // FIXME: check _sclbdyList and _sclbdyLUidx and Mariner Param DISP_sclbdy_Union
-
-        ++_nTotal;
-
-        // debug - anti-meridian, US5HA06M/US5HA06M.000
-        //if (103 == S57_getS57ID(geo)) {
-        //    PRINTF("ISODGR01 found\n");
-        //}
-
-        // debug
-        //if (0 == g_strcmp0("mnufea", S52_PL_getOBCL(obj))) {
-        //    PRINTF("mnufea found\n");
-        //}
-        //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
-        //    PRINTF("M_COVR found\n");
-        //}
-        //if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
-        //    PRINTF("sclbdy found\n");
-        //}
-        //if (0 == strcmp("M_NSYS", S52_PL_getOBCL(obj))) {
-        //    PRINTF("M_NSYS found\n");
-        //}
-        //if (0 == g_strcmp0("OBSTRN", S52_PL_getOBCL(obj))) {
-        //    PRINTF("DEBUG: OBSTRN found\n");
-        //    //S57_dumpData(S52_PL_getGeo(obj), FALSE);
-        //
-        //}
-
-        // is *this* object suppressed by user
-        if (TRUE == S52_PL_getSupp(obj)) {
-            ++_nCull;
-            continue;
-        }
-
-        // SCAMIN & PLib (disp cat) & S57 class
-        if (TRUE == S52_GL_isSupp(obj)) {
-            ++_nCull;
-            continue;
-        }
-
-        // outside view
-        // Note: object can be inside 'ext' but outside the 'view' (cursor pick)
-        if (TRUE == S52_GL_isOFFview(obj)) {
-            ++_nCull;
-            continue;
-        }
-
-        // store object according to radar flags
-        // Note: default to 'over' if something else than 'supp'
-        if (S52_RAD_SUPP == S52_PL_getRPRI(obj)) {
-            g_ptr_array_add(c->objList_supp, obj);
-        } else {
-            g_ptr_array_add(c->objList_over, obj);
-            //S57_geo *geo = S52_PL_getGeo(obj);
-
-            // switch OFF highlight if user acknowledge Alarm / Indication by
-            // resetting S52_MAR_GUARDZONE_ALARM to 0 (OFF - no alarm)
-            // Note: at this time only S52_PRIO_HAZRDS / S52_RAD_OVER
-            //if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_getHighlight(geo))
-            //    S57_setHighlight(geo, FALSE);
-        }
-
-        //*
-        {   // switch OFF highlight if user acknowledge Alarm / Indication by
-            // resetting S52_MAR_GUARDZONE_ALARM to 0 (OFF - no alarm)
-            S57_geo *geo = S52_PL_getGeo(obj);
-            if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_getHighlight(geo))
-                S57_setHighlight(geo, FALSE);
-        }
-        //*/
-
-        // if this object has TX or TE, draw text last (on top)
-        if (TRUE == S52_PL_hasText(obj)) {
-            g_ptr_array_add(c->textList, obj);
-            //PRINTF("DEBUG: add text %p\n", obj);
-        }
-    }
-
-    return TRUE;
-}
-
-static int        _cullLayer(_cell *c)
-// one cell, cull object outside the view and object supressed
-// object culled are not inserted in the list of object to draw (journal)
-{
-    // layer 0-8
-    for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_MARINR; ++i) {
-    // FIXME: Chart No 1 put object on layer 9 (Mariners' Objects)
-    //for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
-        for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
-
-            GPtrArray *c_rbin = c->renderBin[i][j];
-            _cullObj(c, c_rbin);
-
-            //_cullObj(c_rbin, c);
-            //foreach(c->renderBin[i][j], _cullObj, c);
-
-
-            GPtrArray *m_rbin = _marinerCell->renderBin[i][j];
-            _cullObj(c, m_rbin);
-
-            //_cullObj(m_rbin, c);
-            //foreach(_marinerCell->renderBin[i][j], _cullObj, c);
-        }
-    }
-
-    return TRUE;
-}
-
-static int        _cull(ObjExt_t ext)
-// cull chart not in view extent
-// - viewport
-// - small cell region on top
-{
-    _resetJournal();
-
-    // suppress display of M_COVR/m_covr
-    if (TRUE == _CULL_hodata) {
-        // suppress display of HODATA limit M_COVR
-        if (FALSE == (int) S52_MP_get(S52_MAR_DISP_HODATA_UNION)) {
-            if (S52_SUPP_OFF == S52_PL_getObjClassState("M_COVR"))
-                S52_PL_toggleObjClass("M_COVR");
-        }
-
-        // show all - M_COVR + m_covr
-        if (TRUE == (int) S52_MP_get(S52_MAR_DISP_HODATA_UNION)) {
-            if (S52_SUPP_ON  == S52_PL_getObjClassState("M_COVR"))
-                S52_PL_toggleObjClass("M_COVR");
-        }
-        _CULL_hodata = FALSE;
-    }
-
-    if (TRUE == _CULL_sclbdy) {
-        // suppress display of SCLBDY
-        if (FALSE == (int) S52_MP_get(S52_MAR_DISP_SCLBDY_UNION)) {
-            if (S52_SUPP_OFF == S52_PL_getObjClassState("sclbdy"))
-                S52_PL_toggleObjClass("sclbdy");  // switch to SUPP ON
-            if (S52_SUPP_ON == S52_PL_getObjClassState("sclbdU"))
-                S52_PL_toggleObjClass("sclbdU");  // switch to SUPP OFF
-        }
-        // show all SCLBDY
-        if (TRUE == (int) S52_MP_get(S52_MAR_DISP_SCLBDY_UNION)) {
-            if (S52_SUPP_ON == S52_PL_getObjClassState("sclbdy"))
-                S52_PL_toggleObjClass("sclbdy");
-        }
-        _CULL_sclbdy = FALSE;
-    }
-
-    //* --- extend view to fit cell rotation ----------------------------------------
-    // optimisation: use _north angle (in S52GL.c!) if big delta affect GPU
-    double LLv, LLu, URv, URu;
-    S52_GL_getGEOView(&LLv, &LLu, &URv, &URu);
-    //PRINTF("DEBUG: LLv, LLu, URv, URu: %f %f  %f %f\n", LLv, LLu, URv, URu);
-
-    double dLat = ABS((LLv - URv) / 2.0);
-    double dLon = ABS((LLu - URu) / 2.0);
-    S52_GL_setGEOView(LLv-dLat, LLu-dLon, URv+dLat, URu+dLat);
-    //PRINTF("DEBUG: dLat,dLon: %f %f\n", dLat, dLon);
-    //PRINTF("DEBUG: LLv, LLu, URv, URu: %f %f  %f %f\n", LLv-dLat, LLu-dLon, URv+dLat, URu+dLat);
-    //*/
-
-    // all cells - larger region first (small scale)
-    for (guint i=_cellList->len-1; i>0; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-#ifdef S52_USE_WORLD
-        if ((0==g_strcmp0(WORLD_SHP, c->filename->str)) && (FALSE==(int)S52_MP_get(S52_MAR_DISP_WORLD)))
-            continue;
-#endif
-        // is this chart visible
-        if (TRUE == _intersectCELL(c->geoExt, ext)) {
-            _cullLayer(c);
-        }
-    }
-
-    // --- reset original view extent ---------
-    S52_GL_setGEOView(LLv, LLu, URv, URu);
-
-    // debug
-    //PRINTF("DEBUG: _cull(): -fini- STAT: nbr of object culled: %i (%i)\n", _nCull, _nTotal);
-
-    return TRUE;
-}
-
-#if defined(S52_USE_GL2)    || defined(S52_USE_GLES2)
-#if defined(S52_USE_RASTER) || defined(S52_USE_RADAR)
-static int        _drawRaster(void)
-{
-    for (guint i=0; i<_rasterList->len; ++i) {
-        S52_GL_ras *raster = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
-
-        // Note: no _intersectCELL() .. but GL scissor is ON ..
-        // so this migth not really help
-        S52_GL_drawRaster(raster);
-    }
-
-    return TRUE;
-}
-#endif  // S52_USE_RASTER S52_USE_RADAR
-#endif  // S52_USE_GL2 S52_USE_GLES2
-
-static int        _drawLayer(ObjExt_t ext, int layer)
-// debug
-{
-    // all cells --larger region first
-    for (guint i=_cellList->len-1; i>0; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-
-        if (TRUE == _intersectCELL(c->geoExt, ext)) {
-
-            // one layer
-            //for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
-            for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
-                GPtrArray *rbin = c->renderBin[layer][j];
-
-                // one object
-                for (guint idx=0; idx<rbin->len; ++idx) {
-                    S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-
-                    // debug
-                    //S57_geo *geo = S52_PL_getGeo(obj);
-                    //PRINTF("%s\n", S57_getName(geo));
-
-                    // if display of object is not suppressed
-                    if (TRUE == S52_PL_getSupp(obj)) {
-                        //PRINTF("%s\n", S57_getName(geo));
-
-                        S52_GL_draw(obj, NULL);
-
-                        // doing this after the draw because draw() will parse the text
-                        if (TRUE == S52_PL_hasText(obj))
-                            g_ptr_array_add(c->textList, obj); // not tested
-
-                    }
-                }
-            }
-        }
-    }
-
-    return TRUE;
-}
-
-static void       _drawLights(S52_obj *obj, gpointer dummy)
-// draw all lights of all cells outside view extend
-// so that sector and legs show up on screen event if
-// the light itself is outside
-// FIXME: all are S52_RAD_OVER by default, check if UNDER RADAR make sens
-{
-    //if (TRUE == _doCullLights)
-    //    _cullLights();
-    //_doCullLights = FALSE;
-
-    // DRAW (use normal filter (SCAMIN,Supp,..) on all object of all cells)
-
-    // this way all the lights sector are drawn
-    // light outside but with part of sector visible are drawn
-    // but light bellow a cell is not drawn
-    // also light are drawn last (ie after all cells)
-    // so a sector is not shoped by an other cell next to it
-
-    //for (guint i=_cellList->len; i>0; --i) {
-    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
-    /*
-    for (guint i=_cellList->len-1; i>0; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-        // FIXME: use foreach()
-        for (guint j=0; j<c->lights_sector->len; ++j) {
-            S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
-            // SCAMIN & PLib (disp prio)
-            if (TRUE != S52_GL_isSupp(obj)) {
-                if (TRUE != S52_PL_getSupp(obj))
-                    S52_GL_draw(obj, NULL);
-            }
-        }
-    }
-    return TRUE;
-
-    */
-
-    (void)dummy;
-
-    if (TRUE != S52_GL_isSupp(obj)) {
-        if (TRUE != S52_PL_getSupp(obj))
-            S52_GL_draw(obj, NULL);
-    }
-
-    return;
-}
-
-static int        __drawStrWorld(pt3 *pt, char *frmt, char *str, int bsize)
-{
-#define BUF 80
-    char   outstr[BUF] = {'\0'};
-    double offset_x    = 16.0;
-    double offset_y    = 16.0;
-
-    // FIXME: compute offset_y for bsize of str
-    S52_GL_getStrOffset(&offset_x, &offset_y, str);
-    //PRINTF("DEBUG: offset_x:%f, offset_y:%f\n", offset_x, &offset_y);
-
-    pt->y -= offset_y;
-
-    SNPRINTF(outstr, BUF, frmt, str);
-    S52_GL_drawStrWorld(pt->x, pt->y, outstr, bsize);
-
-#undef BUF
-
-    return TRUE;
-}
-
-static int        _drawLegend(void)
-// draw legend of each cell
-// Starting at page I-50.
-{
-        //1.       units for depth                 DUNI subfield of the DSPM field
-        // DSID:DSPM_DUNI
-
-        //2.       units for height                HUNI subfield of the DSPM field
-        // DSID:DSPM_HUNI
-
-        //3.       scale of display                Selected by user. (The default display scale is defined by the CSCL
-        //                                         subfield of the DSPM field or CSCALE attribute value of the M_CSCL object.)
-        // DSID:DSPM_CSCL or
-        // M_CSCL:CSCALE
-
-        //4. data quality indicator            a. CATZOC attribute of the M_QUAL object for bathymetric data
-        //                                     b. POSACC attribute of the M_ACCY object (if available) for non-bathymetric data.
-        //Due to the way quality is encoded in the ENC, both values (a and b) must be used.
-        // M_QUAL:CATZOC and
-        // M_ACCY:POSACC
-
-        //5. sounding/vertical datum SDAT and VDAT subfields of the DSPM field or the VERDAT attribute
-        //                           of the M_SDAT object and M_VDAT object.
-        //                           (VERDAT attributes of individual objects must not be used for the legend.)
-        // DSID:DSPM_SDAT and
-        // DSID:DSPM_VDAT
-        // or
-        // M_SDAT:VERDAT  and
-        // M_VDAT:VERDAT
-
-        //6. horizontal datum            HDAT subfield of the DSPM field
-        // DSID:DSPM_HDAT
-
-        //7. value of safety depth       Selected by user. Default is 30 metres.
-        //8. value of safety contour     Selected by user. Default is 30 metres.
-
-        //9. magnetic variation          VALMAG, RYRMGV and VALACM of the MAGVAR object. Item
-        //                               must be displayed as VALMAG RYRMGV (VALACM) e.g., 4°15W 1990(8'E)
-        // MAGVAR:VALMAG and
-        // MAGVAR:RYRMGV and
-        // MAGVAR:VALACM
-
-        //10. date and number of latest  ISDT and UPDN subfields of the DSID field of the last update cell
-        //                               update file (ER data set) applied.
-        // DSID:DSID_ISDT and
-        // DSID:DSID_UPDN
-
-        //11. edition number and date of EDTN and UADT subfields of the DSID field of the last EN data issue
-        //                               of current ENC issue of the ENC set.
-        // DSID:DSID_EDTN and
-        // DSID:DSID_UADT
-
-        //12. chart projection           Projection used for the ECDIS display (e.g., oblique azimuthal).
-        // Mercator
-
-    // ---------
-
-    // skip mariner's cell
-    for (guint i=1; i<_cellList->len; ++i) {
-        _cell *c      = (_cell*) g_ptr_array_index(_cellList, i);
-        pt3 pt = {c->geoExt.W, c->geoExt.N, 0.0};
-        if (FALSE == S57_geo2prj3dv(1, &pt))
-            return FALSE;
-
-        // ENC Name
-        if (NULL == c->cellName) {
-            // FIXME: can this happen
-            __drawStrWorld(&pt, "ENC NAME: %s", "Unknown", 3);
-
-            g_assert(0);
-        } else {
-            __drawStrWorld(&pt, "%.8s", c->cellName->str, 3);
-        }
-
-        // DSID:DSPM_DUNI: units for depth
-        if (NULL == c->legend.dsid_dunistr) {
-            __drawStrWorld(&pt, "dsid_dspm_duni: %s", "NULL", 11);
-        } else {
-            if ('1' == *c->legend.dsid_dunistr->str) {
-                __drawStrWorld(&pt, "DEPTH IN: %s", "METER", 11);
-            } else {
-                __drawStrWorld(&pt, "DEPTH IN: %s", c->legend.dsid_dunistr->str, 11);
-            }
-        }
-
-        // DSID:DSPM_HUNI: units for height
-        if (NULL == c->legend.dsid_hunistr) {
-            __drawStrWorld(&pt, "dsid_dpsm_huni: %s", "NULL", 10);
-        } else {
-            if ('1' == *c->legend.dsid_hunistr->str) {
-                __drawStrWorld(&pt, "HEIGHT IN: %s", "METER", 10);
-            } else {
-                __drawStrWorld(&pt, "HEIGHT IN: %s", c->legend.dsid_hunistr->str, 10);
-            }
-        }
-
-        {
-            char   str[80]  = {'\0'};
-
-            //7. value of safety depth       Selected by user. Default is 30 metres.
-            __drawStrWorld(&pt, "Safety Depth: %s",   g_ascii_dtostr(str, 80, S52_MP_get(S52_MAR_SAFETY_DEPTH)),   10);
-
-            //8. value of safety contour     Selected by user. Default is 30 metres.
-            __drawStrWorld(&pt, "Safety Contour: %s", g_ascii_dtostr(str, 80, S52_MP_get(S52_MAR_SAFETY_CONTOUR)), 10);
-        }
-
-        // scale of display
-        __drawStrWorld(&pt, "Scale 1:%s", (NULL==c->legend.dsid_csclstr) ? "NULL" : c->legend.dsid_csclstr->str, 12);
-
-        // ----------- DATUM ----------------------------------------------------------
-
-        // DSID:DSPM_SDAT: sounding datum
-        __drawStrWorld(&pt, "dsid_sdat:%s", (NULL==c->legend.dsid_sdatstr) ? "NULL" : c->legend.dsid_sdatstr->str, 11);
-        // DSID:DSPM_VDAT: vertical datum
-        __drawStrWorld(&pt, "dsid_vdat:%s", (NULL==c->legend.dsid_vdatstr) ? "NULL" : c->legend.dsid_vdatstr->str, 11);
-
-        // -OR-
-
-        // legend from M_SDAT
-        // sounding datum
-        if (NULL != c->legend.sverdatstr) __drawStrWorld(&pt, "sverdat:%s", c->legend.sverdatstr->str, 11);
-        // legend from M_VDAT
-        // vertical datum
-        if (NULL != c->legend.vverdatstr) __drawStrWorld(&pt, "vverdat:%s", c->legend.vverdatstr->str, 11);
-
-        // DSID:DSPM_HDAT: horizontal datum
-        __drawStrWorld(&pt, "dsid_hdat:%s", (NULL==c->legend.dsid_hdatstr) ? "NULL" : c->legend.dsid_hdatstr->str, 11);
-
-        // ------------ UPDATE -------------------------------------------------
-
-        // date of latest update
-        __drawStrWorld(&pt, "dsid_isdt:%s", (NULL==c->legend.dsid_isdtstr) ? "NULL" : c->legend.dsid_isdtstr->str, 11);
-        // number of latest update
-        __drawStrWorld(&pt, "dsid_updn:%s", (NULL==c->legend.dsid_updnstr) ? "NULL" : c->legend.dsid_updnstr->str, 11);
-        // edition number
-        __drawStrWorld(&pt, "dsid_edtn:%s", (NULL==c->legend.dsid_edtnstr) ? "NULL" : c->legend.dsid_edtnstr->str, 11);
-        // edition date
-        __drawStrWorld(&pt, "dsid_uadt:%s", (NULL==c->legend.dsid_uadtstr) ? "NULL" : c->legend.dsid_uadtstr->str, 11);
-        // intended usage (navigational purpose)
-        __drawStrWorld(&pt, "dsid_intu:%s", (NULL==c->legend.dsid_intustr) ? "NULL" : c->legend.dsid_intustr->str, 11);
-
-        // legend from M_CSCL
-        // scale
-        if (NULL != c->legend.cscalestr) __drawStrWorld(&pt, "cscale:%s", c->legend.cscalestr->str, 11);
-
-        // legend from M_QUAL CATZOC
-        // data quality indicator
-        __drawStrWorld(&pt, "catzoc:%s", (NULL==c->legend.catzocstr) ? "NULL" : c->legend.catzocstr->str, 11);
-
-        // legend from M_ACCY POSACC
-        // data quality indicator
-        if (NULL != c->legend.posaccstr) __drawStrWorld(&pt, "posacc:%s", c->legend.posaccstr->str, 11);
-
-        // legend from MAGVAR
-        // magnetic
-        if (NULL != c->legend.valmagstr) __drawStrWorld(&pt, "valmag:%s", c->legend.valmagstr->str, 11);
-        if (NULL != c->legend.ryrmgvstr) __drawStrWorld(&pt, "ryrmgv:%s", c->legend.ryrmgvstr->str, 11);
-        if (NULL != c->legend.valacmstr) __drawStrWorld(&pt, "valacm:%s", c->legend.valacmstr->str, 11);
-    }
-
-    return TRUE;
-}
-
-static int        _draw(void)
-// draw object inside view
-// then draw object's text
-{
-    // optimisation: GOURD 1 - face of earth - sort and then glDraw() on a whole surface (what about RGB!)
-    //               - app/cull must reset sort if color change by user
-
-    // skip mariner - mariners obj are embeded in cell's journal
-    //for (guint i=_cellList->len; i>1; --i) {
-    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
-    for (guint i=_cellList->len-1; i>0; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-
-        int atomicAbort = S52_utils_getAtomicInt();
-        //g_atomic_int_get(&_atomicAbort);
-        if (TRUE == atomicAbort) {
-            PRINTF("NOTE: abort drawing .. \n");
-#ifdef S52_USE_BACKTRACE
-            S52_utils_backtrace();
-            //_backtrace();
-#endif
-            S52_utils_setAtomicInt(FALSE);
-            //g_atomic_int_set(&_atomicAbort, FALSE);
-            return TRUE;
-        }
-
-        // ----------------------------------------------------------------------------
-        // FIXME: extract to _LL2XY(guint npt, double *ppt);
-        pt3 pt[2] = {{c->geoExt.W, c->geoExt.S, 0.0}, {c->geoExt.E, c->geoExt.N, 0.0}};
-        //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
-        if (FALSE == S57_geo2prj3dv(2, pt)) {
-            PRINTF("WARNING: S57_geo2prj3dv() failed\n");
-            g_assert(0);
-        }
-        //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
-
-        S52_GL_prj2win(&pt[0].x, &pt[0].y);
-        S52_GL_prj2win(&pt[1].x, &pt[1].y);
-        // ----------------------------------------------------------------------------
-
-        {   //* needed in combining HO DATA limit (check for corner overlap)
-            // also mariners obj that overlapp cells
-            // FIXME: this also clip calibration symbol if overlap cell & NODATA
-            // need to augment the box size for chart rotation, but MIO will overlap!
-            //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
-            int x = floor(pt[0].x);
-            int y = floor(pt[0].y);
-            int w = floor(pt[1].x - pt[0].x);
-            int h = floor(pt[1].y - pt[0].y);
-            S52_GL_setScissor(x, y, w, h);
-            //*/
-        }
-
-        // draw under radar
-        g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
-
-        // USE_RASTER/RADAR
-#if defined(S52_USE_GL2)    || defined(S52_USE_GLES2)
-#if defined(S52_USE_RASTER) || defined(S52_USE_RADAR)
-        // draw radar / raster
-        // Note: no raster in MARINER_CELL (i==1, cell idx 0)
-        if ((1.0==S52_MP_get(S52_MAR_DISP_RADAR_LAYER)) && (1!=i)) {
-            _drawRaster();
-        }
-#endif
-#endif
-        // draw over radar
-        g_ptr_array_foreach(c->objList_over, (GFunc)S52_GL_draw, NULL);
-
-        // end scissor test
-        S52_GL_setScissor(0, 0, -1, -1);
-
-        // draw text
-        g_ptr_array_foreach(c->textList,     (GFunc)S52_GL_drawText, NULL);
-    }
-
-    return TRUE;
-}
-
-DLL int    STD S52_draw(void)
-{
-    // debug
-    //PRINTF("DRAW: start ..\n");
-
-    int ret = FALSE;
-
-    // do not wait if an other thread is allready drawing
-#if (defined(S52_USE_ANDROID) || defined(S52_USE_MINGW))
-    if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
-#else
-    if (FALSE == g_mutex_trylock(&_mp_mutex)) {
-#endif
-
-        static GTimeVal now;
-        g_get_current_time(&now);
-        now.tv_usec = 0;  // will print time without frac of sec
-        PRINTF("WARNING: trylock failed [%s]\n", g_time_val_to_iso8601(&now));
-
-        return FALSE;
-    }
-
-    S52_CHECK_INIT;
-
-    EGL_BEG(DRAW);
-
-    if (NULL == S57_getPrjStr())
-        goto exit;
-
-    g_timer_reset(_timer);
-
-    // debug
-    //PRINTF("DRAW: start ..\n");
-
-    if (TRUE == S52_GL_begin(S52_GL_DRAW)) {
-
-        //PRINTF("S52_draw() .. -1.2-\n");
-
-        //////////////////////////////////////////////
-        // APP:  .. update object
-        _app();
-
-        //////////////////////////////////////////////
-        // CULL: .. supress display of object (eg outside view)
-
-        projUV uv1, uv2;
-        S52_GL_getPRJView(&uv1.v, &uv1.u, &uv2.v, &uv2.u);
-
-        /*
-        // test - optimisation using viewPort to draw area
-        //    S52_CMD_WRD_FILTER_AC = 1 << 3,   // 001000 - AC
-        int x, y, width, height;
-        if (S52_CMD_WRD_FILTER_AC & (int) S52_MP_get(S52_CMD_WRD_FILTER)) {
-            S52_GL_getViewPort(&x, &y, &width, &height);
-            S52_GL_setViewPort(0, 0, width, 200);
-            double newN = (200/height) * (uv2.v - uv1.v);
-            S52_GL_setPRJView(uv1.v, uv1.u, uv1.v + newN, uv2.u);
-        }
-        //*/
-
-        // convert view extent to deg
-        uv1 = S57_prj2geo(uv1);
-        uv2 = S57_prj2geo(uv2);
-
-        ObjExt_t ext = {
-            .S = uv1.v,
-            .W = uv1.u,
-            .N = uv2.v,
-            .E = uv2.u
-        };
-
-        // debug - anti-meridian
-        //if (ext.W > ext.E) {
-        //    ext.W = ext.W - 360.0;
-        //}
-
-        _cull(ext);
-
-        _cullLights();
-
-        //PRINTF("S52_draw() .. -1.3-\n");
-
-        //////////////////////////////////////////////
-        // DRAW: .. render
-
-        if (TRUE == (int) S52_MP_get(S52_MAR_DISP_OVERLAP)) {
-            // debug
-            for (S52_disPrio layer=S52_PRIO_NODATA; layer<S52_PRIO_NUM; ++layer) {
-                _drawLayer(ext, layer);
-
-                // draw all lights (of all cells) outside ext
-                if (S52_PRIO_HAZRDS == layer) {
-                    for (guint i=_cellList->len-1; i>0; --i) {
-                        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-                        g_ptr_array_foreach(c->lights_sector, (GFunc)_drawLights, NULL);
-                    }
-                    //_drawLights();
-                }
-            }
-            //_drawText();
-        } else {
-            _draw();
-
-            // complete leg extend from lights outside view
-            for (guint i=_cellList->len-1; i>0; --i) {
-                _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-                g_ptr_array_foreach(c->lights_sector, (GFunc)_drawLights, NULL);
-            }
-            //_drawLights();
-        }
-
-        //PRINTF("S52_draw() .. -1.4-\n");
-
-        // draw graticule and scale
-        if (FALSE != (int) S52_MP_get(S52_MAR_DISP_GRATICULE))
-            S52_GL_drawGraticule();
-
-        // draw legend
-        if (TRUE == (int) S52_MP_get(S52_MAR_DISP_LEGEND))
-            _drawLegend();
-
-        ret = S52_GL_end(S52_GL_DRAW);
-
-        // for each cell, not after all cell,
-        // because city name appear twice
-        // FIXME: cull object of overlapping region of cell of DIFFERENT nav pourpose
-        // Note: no culling of object of overlapping region of cell of SAME nav pourpose
-        // display priority 8
-        // FIX: it's seem like a HO could handle this, but when zoomig-out it's a S52 overlapping symb. probleme
-
-        //PRINTF("S52_draw() .. -2-\n");
-
-        //ret = TRUE;
-
-    } else {
-        PRINTF("WARNING:S52_GL_begin() failed\n");
-
-        // FIXME: tell EGL to reset context
-        //EGL_END(RESET);
-        g_assert(0);
-    }
-
-exit:
-
-#if !defined(S52_USE_RADAR)
-    EGL_END(DRAW);  // non blocking - buffer swap buffer after flushing pipe
-#endif
-
-#ifdef S52_DEBUG
-    {
-        gdouble usec = g_timer_elapsed(_timer, NULL);
-        PRINTF("    DRAW: %.0f msec --------------------------------------\n", usec * 1000);
-        //S57_dumpData(NULL, FALSE);
-    }
-#endif
-
-    GMUTEXUNLOCK(&_mp_mutex);
-
-    return ret;
-}
+// static int        _cullLights(void)
+// // CULL (first draw() after APP, on all cells)
+// {
+//     if (FALSE == _CULL_Lights)
+//         return FALSE;
+//     _CULL_Lights = FALSE;
+
+//     for (guint i=_cellList->len-1; i>0; --i) {
+//         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+
+//         // FIXME: use foreach()
+//         for (guint j=0; j<c->lights_sector->len; ++j) {
+//             S52_obj *obj  = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
+//             S57_geo *geo  = S52_PL_getGeo(obj);
+//             ObjExt_t oext = S57_getGeoExt(geo);
+
+//             S52_PL_resolveSMB(obj, NULL);
+
+//             // debug - traverse the cell 'above' to check if extent overlap this light
+//             for (guint k=i-1; k>0 ; --k) {
+//                 _cell *cellAbove = (_cell*) g_ptr_array_index(_cellList, k);
+//                 // skip if same scale
+//                 if (*cellAbove->legend.dsid_intustr->str > *c->legend.dsid_intustr->str) {
+//                     if (TRUE == _intersectCELL(cellAbove->geoExt, oext)) {
+//                         // check this: a chart above this light sector
+//                         // does not have the same lights (this would be a bug in S57)
+//                         S52_PL_setSupp(obj, TRUE);
+
+//                         g_assert(0);
+//                     }
+//                 }
+//             }
+//         }
+//         // g_ptr_array_foreach(c->lights_sector, (GFunc) _resolveLights, NULL);
+//     }
+
+//     return TRUE;
+// }
+
+// static int        _cullObj(_cell *c, GPtrArray *rbin)
+// //static int        _cullObj(S52_obj *obj, _cell *c)
+// // cull object out side the view and object supressed
+// // object culled are not inserted in the list of object to draw (journal)
+// {
+//     // for each object
+//     for (guint idx=0; idx<rbin->len; ++idx) {
+//         S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+
+//         // debug: can this happen!
+//         if (NULL == obj) {
+//             PRINTF("DEBUG: skip NULL obj\n");
+//             g_assert(0);
+//             continue;
+//         }
+
+//         // FIXME: check _sclbdyList and _sclbdyLUidx and Mariner Param DISP_sclbdy_Union
+
+//         ++_nTotal;
+
+//         // debug - anti-meridian, US5HA06M/US5HA06M.000
+//         //if (103 == S57_getS57ID(geo)) {
+//         //    PRINTF("ISODGR01 found\n");
+//         //}
+
+//         // debug
+//         //if (0 == g_strcmp0("mnufea", S52_PL_getOBCL(obj))) {
+//         //    PRINTF("mnufea found\n");
+//         //}
+//         //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
+//         //    PRINTF("M_COVR found\n");
+//         //}
+//         //if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
+//         //    PRINTF("sclbdy found\n");
+//         //}
+//         //if (0 == strcmp("M_NSYS", S52_PL_getOBCL(obj))) {
+//         //    PRINTF("M_NSYS found\n");
+//         //}
+//         //if (0 == g_strcmp0("OBSTRN", S52_PL_getOBCL(obj))) {
+//         //    PRINTF("DEBUG: OBSTRN found\n");
+//         //    //S57_dumpData(S52_PL_getGeo(obj), FALSE);
+//         //
+//         //}
+
+//         // is *this* object suppressed by user
+//         if (TRUE == S52_PL_getSupp(obj)) {
+//             ++_nCull;
+//             continue;
+//         }
+
+//         // SCAMIN & PLib (disp cat) & S57 class
+//         if (TRUE == S52_GL_isSupp(obj)) {
+//             ++_nCull;
+//             continue;
+//         }
+
+//         // outside view
+//         // Note: object can be inside 'ext' but outside the 'view' (cursor pick)
+//         if (TRUE == S52_GL_isOFFview(obj)) {
+//             ++_nCull;
+//             continue;
+//         }
+
+//         // store object according to radar flags
+//         // Note: default to 'over' if something else than 'supp'
+//         if (S52_RAD_SUPP == S52_PL_getRPRI(obj)) {
+//             g_ptr_array_add(c->objList_supp, obj);
+//         } else {
+//             g_ptr_array_add(c->objList_over, obj);
+//             //S57_geo *geo = S52_PL_getGeo(obj);
+
+//             // switch OFF highlight if user acknowledge Alarm / Indication by
+//             // resetting S52_MAR_GUARDZONE_ALARM to 0 (OFF - no alarm)
+//             // Note: at this time only S52_PRIO_HAZRDS / S52_RAD_OVER
+//             //if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_getHighlight(geo))
+//             //    S57_setHighlight(geo, FALSE);
+//         }
+
+//         //*
+//         {   // switch OFF highlight if user acknowledge Alarm / Indication by
+//             // resetting S52_MAR_GUARDZONE_ALARM to 0 (OFF - no alarm)
+//             S57_geo *geo = S52_PL_getGeo(obj);
+//             if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_getHighlight(geo))
+//                 S57_setHighlight(geo, FALSE);
+//         }
+//         //*/
+
+//         // if this object has TX or TE, draw text last (on top)
+//         if (TRUE == S52_PL_hasText(obj)) {
+//             g_ptr_array_add(c->textList, obj);
+//             //PRINTF("DEBUG: add text %p\n", obj);
+//         }
+//     }
+
+//     return TRUE;
+// }
+
+// static int        _cullLayer(_cell *c)
+// // one cell, cull object outside the view and object supressed
+// // object culled are not inserted in the list of object to draw (journal)
+// {
+//     // layer 0-8
+//     for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_MARINR; ++i) {
+//     // FIXME: Chart No 1 put object on layer 9 (Mariners' Objects)
+//     //for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
+//         for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
+
+//             GPtrArray *c_rbin = c->renderBin[i][j];
+//             _cullObj(c, c_rbin);
+
+//             //_cullObj(c_rbin, c);
+//             //foreach(c->renderBin[i][j], _cullObj, c);
+
+
+//             GPtrArray *m_rbin = _marinerCell->renderBin[i][j];
+//             _cullObj(c, m_rbin);
+
+//             //_cullObj(m_rbin, c);
+//             //foreach(_marinerCell->renderBin[i][j], _cullObj, c);
+//         }
+//     }
+
+//     return TRUE;
+// }
+
+// static int        _cull(ObjExt_t ext)
+// // cull chart not in view extent
+// // - viewport
+// // - small cell region on top
+// {
+//     _resetJournal();
+
+//     // suppress display of M_COVR/m_covr
+//     if (TRUE == _CULL_hodata) {
+//         // suppress display of HODATA limit M_COVR
+//         if (FALSE == (int) S52_MP_get(S52_MAR_DISP_HODATA_UNION)) {
+//             if (S52_SUPP_OFF == S52_PL_getObjClassState("M_COVR"))
+//                 S52_PL_toggleObjClass("M_COVR");
+//         }
+
+//         // show all - M_COVR + m_covr
+//         if (TRUE == (int) S52_MP_get(S52_MAR_DISP_HODATA_UNION)) {
+//             if (S52_SUPP_ON  == S52_PL_getObjClassState("M_COVR"))
+//                 S52_PL_toggleObjClass("M_COVR");
+//         }
+//         _CULL_hodata = FALSE;
+//     }
+
+//     if (TRUE == _CULL_sclbdy) {
+//         // suppress display of SCLBDY
+//         if (FALSE == (int) S52_MP_get(S52_MAR_DISP_SCLBDY_UNION)) {
+//             if (S52_SUPP_OFF == S52_PL_getObjClassState("sclbdy"))
+//                 S52_PL_toggleObjClass("sclbdy");  // switch to SUPP ON
+//             if (S52_SUPP_ON == S52_PL_getObjClassState("sclbdU"))
+//                 S52_PL_toggleObjClass("sclbdU");  // switch to SUPP OFF
+//         }
+//         // show all SCLBDY
+//         if (TRUE == (int) S52_MP_get(S52_MAR_DISP_SCLBDY_UNION)) {
+//             if (S52_SUPP_ON == S52_PL_getObjClassState("sclbdy"))
+//                 S52_PL_toggleObjClass("sclbdy");
+//         }
+//         _CULL_sclbdy = FALSE;
+//     }
+
+//     //* --- extend view to fit cell rotation ----------------------------------------
+//     // optimisation: use _north angle (in S52GL.c!) if big delta affect GPU
+//     double LLv, LLu, URv, URu;
+//     S52_GL_getGEOView(&LLv, &LLu, &URv, &URu);
+//     //PRINTF("DEBUG: LLv, LLu, URv, URu: %f %f  %f %f\n", LLv, LLu, URv, URu);
+
+//     double dLat = ABS((LLv - URv) / 2.0);
+//     double dLon = ABS((LLu - URu) / 2.0);
+//     S52_GL_setGEOView(LLv-dLat, LLu-dLon, URv+dLat, URu+dLat);
+//     //PRINTF("DEBUG: dLat,dLon: %f %f\n", dLat, dLon);
+//     //PRINTF("DEBUG: LLv, LLu, URv, URu: %f %f  %f %f\n", LLv-dLat, LLu-dLon, URv+dLat, URu+dLat);
+//     //*/
+
+//     // all cells - larger region first (small scale)
+//     for (guint i=_cellList->len-1; i>0; --i) {
+//         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+// #ifdef S52_USE_WORLD
+//         if ((0==g_strcmp0(WORLD_SHP, c->filename->str)) && (FALSE==(int)S52_MP_get(S52_MAR_DISP_WORLD)))
+//             continue;
+// #endif
+//         // is this chart visible
+//         if (TRUE == _intersectCELL(c->geoExt, ext)) {
+//             _cullLayer(c);
+//         }
+//     }
+
+//     // --- reset original view extent ---------
+//     S52_GL_setGEOView(LLv, LLu, URv, URu);
+
+//     // debug
+//     //PRINTF("DEBUG: _cull(): -fini- STAT: nbr of object culled: %i (%i)\n", _nCull, _nTotal);
+
+//     return TRUE;
+// }
+
+// #if defined(S52_USE_GL2)    || defined(S52_USE_GLES2)
+// #if defined(S52_USE_RASTER) || defined(S52_USE_RADAR)
+// static int        _drawRaster(void)
+// {
+//     for (guint i=0; i<_rasterList->len; ++i) {
+//         S52_GL_ras *raster = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
+
+//         // Note: no _intersectCELL() .. but GL scissor is ON ..
+//         // so this migth not really help
+//         S52_GL_drawRaster(raster);
+//     }
+
+//     return TRUE;
+// }
+// #endif  // S52_USE_RASTER S52_USE_RADAR
+// #endif  // S52_USE_GL2 S52_USE_GLES2
+
+// static int        _drawLayer(ObjExt_t ext, int layer)
+// // debug
+// {
+//     // all cells --larger region first
+//     for (guint i=_cellList->len-1; i>0; --i) {
+//         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+
+//         if (TRUE == _intersectCELL(c->geoExt, ext)) {
+
+//             // one layer
+//             //for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
+//             for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
+//                 GPtrArray *rbin = c->renderBin[layer][j];
+
+//                 // one object
+//                 for (guint idx=0; idx<rbin->len; ++idx) {
+//                     S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+
+//                     // debug
+//                     //S57_geo *geo = S52_PL_getGeo(obj);
+//                     //PRINTF("%s\n", S57_getName(geo));
+
+//                     // if display of object is not suppressed
+//                     if (TRUE == S52_PL_getSupp(obj)) {
+//                         //PRINTF("%s\n", S57_getName(geo));
+
+//                         S52_GL_draw(obj, NULL);
+
+//                         // doing this after the draw because draw() will parse the text
+//                         if (TRUE == S52_PL_hasText(obj))
+//                             g_ptr_array_add(c->textList, obj); // not tested
+
+//                     }
+//                 }
+//             }
+//         }
+//     }
+
+//     return TRUE;
+// }
+
+// static void       _drawLights(S52_obj *obj, gpointer dummy)
+// // draw all lights of all cells outside view extend
+// // so that sector and legs show up on screen event if
+// // the light itself is outside
+// // FIXME: all are S52_RAD_OVER by default, check if UNDER RADAR make sens
+// {
+//     //if (TRUE == _doCullLights)
+//     //    _cullLights();
+//     //_doCullLights = FALSE;
+
+//     // DRAW (use normal filter (SCAMIN,Supp,..) on all object of all cells)
+
+//     // this way all the lights sector are drawn
+//     // light outside but with part of sector visible are drawn
+//     // but light bellow a cell is not drawn
+//     // also light are drawn last (ie after all cells)
+//     // so a sector is not shoped by an other cell next to it
+
+//     //for (guint i=_cellList->len; i>0; --i) {
+//     //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+//     /*
+//     for (guint i=_cellList->len-1; i>0; --i) {
+//         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+//         // FIXME: use foreach()
+//         for (guint j=0; j<c->lights_sector->len; ++j) {
+//             S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
+//             // SCAMIN & PLib (disp prio)
+//             if (TRUE != S52_GL_isSupp(obj)) {
+//                 if (TRUE != S52_PL_getSupp(obj))
+//                     S52_GL_draw(obj, NULL);
+//             }
+//         }
+//     }
+//     return TRUE;
+
+//     */
+
+//     (void)dummy;
+
+//     if (TRUE != S52_GL_isSupp(obj)) {
+//         if (TRUE != S52_PL_getSupp(obj))
+//             S52_GL_draw(obj, NULL);
+//     }
+
+//     return;
+// }
+
+// static int        __drawStrWorld(pt3 *pt, char *frmt, char *str, int bsize)
+// {
+// #define BUF 80
+//     char   outstr[BUF] = {'\0'};
+//     double offset_x    = 16.0;
+//     double offset_y    = 16.0;
+
+//     // FIXME: compute offset_y for bsize of str
+//     S52_GL_getStrOffset(&offset_x, &offset_y, str);
+//     //PRINTF("DEBUG: offset_x:%f, offset_y:%f\n", offset_x, &offset_y);
+
+//     pt->y -= offset_y;
+
+//     SNPRINTF(outstr, BUF, frmt, str);
+//     S52_GL_drawStrWorld(pt->x, pt->y, outstr, bsize);
+
+// #undef BUF
+
+//     return TRUE;
+// }
+
+// static int        _drawLegend(void)
+// // draw legend of each cell
+// // Starting at page I-50.
+// {
+//         //1.       units for depth                 DUNI subfield of the DSPM field
+//         // DSID:DSPM_DUNI
+
+//         //2.       units for height                HUNI subfield of the DSPM field
+//         // DSID:DSPM_HUNI
+
+//         //3.       scale of display                Selected by user. (The default display scale is defined by the CSCL
+//         //                                         subfield of the DSPM field or CSCALE attribute value of the M_CSCL object.)
+//         // DSID:DSPM_CSCL or
+//         // M_CSCL:CSCALE
+
+//         //4. data quality indicator            a. CATZOC attribute of the M_QUAL object for bathymetric data
+//         //                                     b. POSACC attribute of the M_ACCY object (if available) for non-bathymetric data.
+//         //Due to the way quality is encoded in the ENC, both values (a and b) must be used.
+//         // M_QUAL:CATZOC and
+//         // M_ACCY:POSACC
+
+//         //5. sounding/vertical datum SDAT and VDAT subfields of the DSPM field or the VERDAT attribute
+//         //                           of the M_SDAT object and M_VDAT object.
+//         //                           (VERDAT attributes of individual objects must not be used for the legend.)
+//         // DSID:DSPM_SDAT and
+//         // DSID:DSPM_VDAT
+//         // or
+//         // M_SDAT:VERDAT  and
+//         // M_VDAT:VERDAT
+
+//         //6. horizontal datum            HDAT subfield of the DSPM field
+//         // DSID:DSPM_HDAT
+
+//         //7. value of safety depth       Selected by user. Default is 30 metres.
+//         //8. value of safety contour     Selected by user. Default is 30 metres.
+
+//         //9. magnetic variation          VALMAG, RYRMGV and VALACM of the MAGVAR object. Item
+//         //                               must be displayed as VALMAG RYRMGV (VALACM) e.g., 4°15W 1990(8'E)
+//         // MAGVAR:VALMAG and
+//         // MAGVAR:RYRMGV and
+//         // MAGVAR:VALACM
+
+//         //10. date and number of latest  ISDT and UPDN subfields of the DSID field of the last update cell
+//         //                               update file (ER data set) applied.
+//         // DSID:DSID_ISDT and
+//         // DSID:DSID_UPDN
+
+//         //11. edition number and date of EDTN and UADT subfields of the DSID field of the last EN data issue
+//         //                               of current ENC issue of the ENC set.
+//         // DSID:DSID_EDTN and
+//         // DSID:DSID_UADT
+
+//         //12. chart projection           Projection used for the ECDIS display (e.g., oblique azimuthal).
+//         // Mercator
+
+//     // ---------
+
+//     // skip mariner's cell
+//     for (guint i=1; i<_cellList->len; ++i) {
+//         _cell *c      = (_cell*) g_ptr_array_index(_cellList, i);
+//         pt3 pt = {c->geoExt.W, c->geoExt.N, 0.0};
+//         if (FALSE == S57_geo2prj3dv(1, &pt))
+//             return FALSE;
+
+//         // ENC Name
+//         if (NULL == c->cellName) {
+//             // FIXME: can this happen
+//             __drawStrWorld(&pt, "ENC NAME: %s", "Unknown", 3);
+
+//             g_assert(0);
+//         } else {
+//             __drawStrWorld(&pt, "%.8s", c->cellName->str, 3);
+//         }
+
+//         // DSID:DSPM_DUNI: units for depth
+//         if (NULL == c->legend.dsid_dunistr) {
+//             __drawStrWorld(&pt, "dsid_dspm_duni: %s", "NULL", 11);
+//         } else {
+//             if ('1' == *c->legend.dsid_dunistr->str) {
+//                 __drawStrWorld(&pt, "DEPTH IN: %s", "METER", 11);
+//             } else {
+//                 __drawStrWorld(&pt, "DEPTH IN: %s", c->legend.dsid_dunistr->str, 11);
+//             }
+//         }
+
+//         // DSID:DSPM_HUNI: units for height
+//         if (NULL == c->legend.dsid_hunistr) {
+//             __drawStrWorld(&pt, "dsid_dpsm_huni: %s", "NULL", 10);
+//         } else {
+//             if ('1' == *c->legend.dsid_hunistr->str) {
+//                 __drawStrWorld(&pt, "HEIGHT IN: %s", "METER", 10);
+//             } else {
+//                 __drawStrWorld(&pt, "HEIGHT IN: %s", c->legend.dsid_hunistr->str, 10);
+//             }
+//         }
+
+//         {
+//             char   str[80]  = {'\0'};
+
+//             //7. value of safety depth       Selected by user. Default is 30 metres.
+//             __drawStrWorld(&pt, "Safety Depth: %s",   g_ascii_dtostr(str, 80, S52_MP_get(S52_MAR_SAFETY_DEPTH)),   10);
+
+//             //8. value of safety contour     Selected by user. Default is 30 metres.
+//             __drawStrWorld(&pt, "Safety Contour: %s", g_ascii_dtostr(str, 80, S52_MP_get(S52_MAR_SAFETY_CONTOUR)), 10);
+//         }
+
+//         // scale of display
+//         __drawStrWorld(&pt, "Scale 1:%s", (NULL==c->legend.dsid_csclstr) ? "NULL" : c->legend.dsid_csclstr->str, 12);
+
+//         // ----------- DATUM ----------------------------------------------------------
+
+//         // DSID:DSPM_SDAT: sounding datum
+//         __drawStrWorld(&pt, "dsid_sdat:%s", (NULL==c->legend.dsid_sdatstr) ? "NULL" : c->legend.dsid_sdatstr->str, 11);
+//         // DSID:DSPM_VDAT: vertical datum
+//         __drawStrWorld(&pt, "dsid_vdat:%s", (NULL==c->legend.dsid_vdatstr) ? "NULL" : c->legend.dsid_vdatstr->str, 11);
+
+//         // -OR-
+
+//         // legend from M_SDAT
+//         // sounding datum
+//         if (NULL != c->legend.sverdatstr) __drawStrWorld(&pt, "sverdat:%s", c->legend.sverdatstr->str, 11);
+//         // legend from M_VDAT
+//         // vertical datum
+//         if (NULL != c->legend.vverdatstr) __drawStrWorld(&pt, "vverdat:%s", c->legend.vverdatstr->str, 11);
+
+//         // DSID:DSPM_HDAT: horizontal datum
+//         __drawStrWorld(&pt, "dsid_hdat:%s", (NULL==c->legend.dsid_hdatstr) ? "NULL" : c->legend.dsid_hdatstr->str, 11);
+
+//         // ------------ UPDATE -------------------------------------------------
+
+//         // date of latest update
+//         __drawStrWorld(&pt, "dsid_isdt:%s", (NULL==c->legend.dsid_isdtstr) ? "NULL" : c->legend.dsid_isdtstr->str, 11);
+//         // number of latest update
+//         __drawStrWorld(&pt, "dsid_updn:%s", (NULL==c->legend.dsid_updnstr) ? "NULL" : c->legend.dsid_updnstr->str, 11);
+//         // edition number
+//         __drawStrWorld(&pt, "dsid_edtn:%s", (NULL==c->legend.dsid_edtnstr) ? "NULL" : c->legend.dsid_edtnstr->str, 11);
+//         // edition date
+//         __drawStrWorld(&pt, "dsid_uadt:%s", (NULL==c->legend.dsid_uadtstr) ? "NULL" : c->legend.dsid_uadtstr->str, 11);
+//         // intended usage (navigational purpose)
+//         __drawStrWorld(&pt, "dsid_intu:%s", (NULL==c->legend.dsid_intustr) ? "NULL" : c->legend.dsid_intustr->str, 11);
+
+//         // legend from M_CSCL
+//         // scale
+//         if (NULL != c->legend.cscalestr) __drawStrWorld(&pt, "cscale:%s", c->legend.cscalestr->str, 11);
+
+//         // legend from M_QUAL CATZOC
+//         // data quality indicator
+//         __drawStrWorld(&pt, "catzoc:%s", (NULL==c->legend.catzocstr) ? "NULL" : c->legend.catzocstr->str, 11);
+
+//         // legend from M_ACCY POSACC
+//         // data quality indicator
+//         if (NULL != c->legend.posaccstr) __drawStrWorld(&pt, "posacc:%s", c->legend.posaccstr->str, 11);
+
+//         // legend from MAGVAR
+//         // magnetic
+//         if (NULL != c->legend.valmagstr) __drawStrWorld(&pt, "valmag:%s", c->legend.valmagstr->str, 11);
+//         if (NULL != c->legend.ryrmgvstr) __drawStrWorld(&pt, "ryrmgv:%s", c->legend.ryrmgvstr->str, 11);
+//         if (NULL != c->legend.valacmstr) __drawStrWorld(&pt, "valacm:%s", c->legend.valacmstr->str, 11);
+//     }
+
+//     return TRUE;
+// }
+
+// static int        _draw(void)
+// // draw object inside view
+// // then draw object's text
+// {
+//     // optimisation: GOURD 1 - face of earth - sort and then glDraw() on a whole surface (what about RGB!)
+//     //               - app/cull must reset sort if color change by user
+
+//     // skip mariner - mariners obj are embeded in cell's journal
+//     //for (guint i=_cellList->len; i>1; --i) {
+//     //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+//     for (guint i=_cellList->len-1; i>0; --i) {
+//         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+
+//         int atomicAbort = S52_utils_getAtomicInt();
+//         //g_atomic_int_get(&_atomicAbort);
+//         if (TRUE == atomicAbort) {
+//             PRINTF("NOTE: abort drawing .. \n");
+// #ifdef S52_USE_BACKTRACE
+//             S52_utils_backtrace();
+//             //_backtrace();
+// #endif
+//             S52_utils_setAtomicInt(FALSE);
+//             //g_atomic_int_set(&_atomicAbort, FALSE);
+//             return TRUE;
+//         }
+
+//         // ----------------------------------------------------------------------------
+//         // FIXME: extract to _LL2XY(guint npt, double *ppt);
+//         pt3 pt[2] = {{c->geoExt.W, c->geoExt.S, 0.0}, {c->geoExt.E, c->geoExt.N, 0.0}};
+//         //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
+//         if (FALSE == S57_geo2prj3dv(2, pt)) {
+//             PRINTF("WARNING: S57_geo2prj3dv() failed\n");
+//             g_assert(0);
+//         }
+//         //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
+
+//         S52_GL_prj2win(&pt[0].x, &pt[0].y);
+//         S52_GL_prj2win(&pt[1].x, &pt[1].y);
+//         // ----------------------------------------------------------------------------
+
+//         {   //* needed in combining HO DATA limit (check for corner overlap)
+//             // also mariners obj that overlapp cells
+//             // FIXME: this also clip calibration symbol if overlap cell & NODATA
+//             // need to augment the box size for chart rotation, but MIO will overlap!
+//             //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
+//             int x = floor(pt[0].x);
+//             int y = floor(pt[0].y);
+//             int w = floor(pt[1].x - pt[0].x);
+//             int h = floor(pt[1].y - pt[0].y);
+//             S52_GL_setScissor(x, y, w, h);
+//             //*/
+//         }
+
+//         // draw under radar
+//         g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
+
+//         // USE_RASTER/RADAR
+// #if defined(S52_USE_GL2)    || defined(S52_USE_GLES2)
+// #if defined(S52_USE_RASTER) || defined(S52_USE_RADAR)
+//         // draw radar / raster
+//         // Note: no raster in MARINER_CELL (i==1, cell idx 0)
+//         if ((1.0==S52_MP_get(S52_MAR_DISP_RADAR_LAYER)) && (1!=i)) {
+//             _drawRaster();
+//         }
+// #endif
+// #endif
+//         // draw over radar
+//         g_ptr_array_foreach(c->objList_over, (GFunc)S52_GL_draw, NULL);
+
+//         // end scissor test
+//         S52_GL_setScissor(0, 0, -1, -1);
+
+//         // draw text
+//         g_ptr_array_foreach(c->textList,     (GFunc)S52_GL_drawText, NULL);
+//     }
+
+//     return TRUE;
+// }
+
+// DLL int    STD S52_draw(void)
+// {
+//     // debug
+//     //PRINTF("DRAW: start ..\n");
+
+//     int ret = FALSE;
+
+//     // do not wait if an other thread is allready drawing
+// #if (defined(S52_USE_ANDROID) || defined(S52_USE_MINGW))
+//     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
+// #else
+//     if (FALSE == g_mutex_trylock(&_mp_mutex)) {
+// #endif
+
+//         static GTimeVal now;
+//         g_get_current_time(&now);
+//         now.tv_usec = 0;  // will print time without frac of sec
+//         PRINTF("WARNING: trylock failed [%s]\n", g_time_val_to_iso8601(&now));
+
+//         return FALSE;
+//     }
+
+//     S52_CHECK_INIT;
+
+//     EGL_BEG(DRAW);
+
+//     if (NULL == S57_getPrjStr())
+//         goto exit;
+
+//     g_timer_reset(_timer);
+
+//     // debug
+//     //PRINTF("DRAW: start ..\n");
+
+//     if (TRUE == S52_GL_begin(S52_GL_DRAW)) {
+
+//         //PRINTF("S52_draw() .. -1.2-\n");
+
+//         //////////////////////////////////////////////
+//         // APP:  .. update object
+//         _app();
+
+//         //////////////////////////////////////////////
+//         // CULL: .. supress display of object (eg outside view)
+
+//         PJ_UV uv1, uv2;
+//         S52_GL_getPRJView(&uv1.v, &uv1.u, &uv2.v, &uv2.u);
+
+//         /*
+//         // test - optimisation using viewPort to draw area
+//         //    S52_CMD_WRD_FILTER_AC = 1 << 3,   // 001000 - AC
+//         int x, y, width, height;
+//         if (S52_CMD_WRD_FILTER_AC & (int) S52_MP_get(S52_CMD_WRD_FILTER)) {
+//             S52_GL_getViewPort(&x, &y, &width, &height);
+//             S52_GL_setViewPort(0, 0, width, 200);
+//             double newN = (200/height) * (uv2.v - uv1.v);
+//             S52_GL_setPRJView(uv1.v, uv1.u, uv1.v + newN, uv2.u);
+//         }
+//         //*/
+
+//         // convert view extent to deg
+//         uv1 = S57_prj2geo(uv1);
+//         uv2 = S57_prj2geo(uv2);
+
+//         ObjExt_t ext = {
+//             .S = uv1.v,
+//             .W = uv1.u,
+//             .N = uv2.v,
+//             .E = uv2.u
+//         };
+
+//         // debug - anti-meridian
+//         //if (ext.W > ext.E) {
+//         //    ext.W = ext.W - 360.0;
+//         //}
+
+//         _cull(ext);
+
+//         _cullLights();
+
+//         //PRINTF("S52_draw() .. -1.3-\n");
+
+//         //////////////////////////////////////////////
+//         // DRAW: .. render
+
+//         if (TRUE == (int) S52_MP_get(S52_MAR_DISP_OVERLAP)) {
+//             // debug
+//             for (S52_disPrio layer=S52_PRIO_NODATA; layer<S52_PRIO_NUM; ++layer) {
+//                 _drawLayer(ext, layer);
+
+//                 // draw all lights (of all cells) outside ext
+//                 if (S52_PRIO_HAZRDS == layer) {
+//                     for (guint i=_cellList->len-1; i>0; --i) {
+//                         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+//                         g_ptr_array_foreach(c->lights_sector, (GFunc)_drawLights, NULL);
+//                     }
+//                     //_drawLights();
+//                 }
+//             }
+//             //_drawText();
+//         } else {
+//             _draw();
+
+//             // complete leg extend from lights outside view
+//             for (guint i=_cellList->len-1; i>0; --i) {
+//                 _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+//                 g_ptr_array_foreach(c->lights_sector, (GFunc)_drawLights, NULL);
+//             }
+//             //_drawLights();
+//         }
+
+//         //PRINTF("S52_draw() .. -1.4-\n");
+
+//         // draw graticule and scale
+//         if (FALSE != (int) S52_MP_get(S52_MAR_DISP_GRATICULE))
+//             S52_GL_drawGraticule();
+
+//         // draw legend
+//         if (TRUE == (int) S52_MP_get(S52_MAR_DISP_LEGEND))
+//             _drawLegend();
+
+//         ret = S52_GL_end(S52_GL_DRAW);
+
+//         // for each cell, not after all cell,
+//         // because city name appear twice
+//         // FIXME: cull object of overlapping region of cell of DIFFERENT nav pourpose
+//         // Note: no culling of object of overlapping region of cell of SAME nav pourpose
+//         // display priority 8
+//         // FIX: it's seem like a HO could handle this, but when zoomig-out it's a S52 overlapping symb. probleme
+
+//         //PRINTF("S52_draw() .. -2-\n");
+
+//         //ret = TRUE;
+
+//     } else {
+//         PRINTF("WARNING:S52_GL_begin() failed\n");
+
+//         // FIXME: tell EGL to reset context
+//         //EGL_END(RESET);
+//         g_assert(0);
+//     }
+
+// exit:
+
+// #if !defined(S52_USE_RADAR)
+//     EGL_END(DRAW);  // non blocking - buffer swap buffer after flushing pipe
+// #endif
+
+// #ifdef S52_DEBUG
+//     {
+//         gdouble usec = g_timer_elapsed(_timer, NULL);
+//         PRINTF("    DRAW: %.0f msec --------------------------------------\n", usec * 1000);
+//         //S57_dumpData(NULL, FALSE);
+//     }
+// #endif
+
+//     GMUTEXUNLOCK(&_mp_mutex);
+
+//     return ret;
+// }
 
 static void       _delOldVessel(gpointer data, gpointer user_data)
 {
@@ -3838,186 +3949,186 @@ static void       _delOldVessel(gpointer data, gpointer user_data)
     return;
 }
 
-static int        _drawLast(GPtrArray *rbin)
-// draw the Mariners' Object (layer 9)
-{
-    //for (S52ObjectType i=S52_AREAS; i<S52_N_OBJ; ++i) {
-    // Note: mariner's obj allow for META
-    //for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
-        //GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][j];
-        // FIFO
-        //for (guint idx=0; idx<rbin->len; ++idx) {
-        // LIFO: so that 'cursor' is drawn last (on top)
-        for (guint idx=rbin->len; idx>0; --idx) {
-            S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx-1);
+// static int        _drawLast(GPtrArray *rbin)
+// // draw the Mariners' Object (layer 9)
+// {
+//     //for (S52ObjectType i=S52_AREAS; i<S52_N_OBJ; ++i) {
+//     // Note: mariner's obj allow for META
+//     //for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
+//         //GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][j];
+//         // FIFO
+//         //for (guint idx=0; idx<rbin->len; ++idx) {
+//         // LIFO: so that 'cursor' is drawn last (on top)
+//         for (guint idx=rbin->len; idx>0; --idx) {
+//             S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx-1);
 
-            int atomicAbort = S52_utils_getAtomicInt();
-            //g_atomic_int_get(&_atomicAbort);
-            if (TRUE == atomicAbort) {
-                PRINTF("NOTE: abort drawing .. \n");
-#ifdef S52_USE_BACKTRACE
-                S52_utils_backtrace();
-                //_backtrace();
-#endif
-                S52_utils_setAtomicInt(FALSE);
-                //g_atomic_int_set(&_atomicAbort, FALSE);
-                return TRUE;
-            }
+//             int atomicAbort = S52_utils_getAtomicInt();
+//             //g_atomic_int_get(&_atomicAbort);
+//             if (TRUE == atomicAbort) {
+//                 PRINTF("NOTE: abort drawing .. \n");
+// #ifdef S52_USE_BACKTRACE
+//                 S52_utils_backtrace();
+//                 //_backtrace();
+// #endif
+//                 S52_utils_setAtomicInt(FALSE);
+//                 //g_atomic_int_set(&_atomicAbort, FALSE);
+//                 return TRUE;
+//             }
 
-            // debug: can this happen!
-            if (NULL == obj) {
-                PRINTF("DEBUG: skip NULL obj\n");
-                g_assert(0);
-                continue;
-            }
+//             // debug: can this happen!
+//             if (NULL == obj) {
+//                 PRINTF("DEBUG: skip NULL obj\n");
+//                 g_assert(0);
+//                 continue;
+//             }
 
-            /////////////////////////////////////
-            // CULL & DRAW
-            //
-            ++_nTotal;
+//             /////////////////////////////////////
+//             // CULL & DRAW
+//             //
+//             ++_nTotal;
 
-            // FIXME: use by PRINTF() - move inside
-            //S57_geo *geo = S52_PL_getGeo(obj);
+//             // FIXME: use by PRINTF() - move inside
+//             //S57_geo *geo = S52_PL_getGeo(obj);
 
-            // is this object suppressed by user
-            if (TRUE == S52_PL_getSupp(obj)) {
-                ++_nCull;
+//             // is this object suppressed by user
+//             if (TRUE == S52_PL_getSupp(obj)) {
+//                 ++_nCull;
 
-                //PRINTF("DEBUG:%i: supp ON - %s\n", _nTotal, S57_getName(geo));
+//                 //PRINTF("DEBUG:%i: supp ON - %s\n", _nTotal, S57_getName(geo));
 
-                continue;
-            }
+//                 continue;
+//             }
 
-            // outside view
-            // Note: object can be inside 'ext' but outside the 'view' (cursor pick)
-            if (TRUE == S52_GL_isOFFview(obj)) {
-                ++_nCull;
+//             // outside view
+//             // Note: object can be inside 'ext' but outside the 'view' (cursor pick)
+//             if (TRUE == S52_GL_isOFFview(obj)) {
+//                 ++_nCull;
 
-                //PRINTF("DEBUG:%i: OFF view - %s\n", _nTotal, S57_getName(geo));
+//                 //PRINTF("DEBUG:%i: OFF view - %s\n", _nTotal, S57_getName(geo));
 
-                continue;
-            }
+//                 continue;
+//             }
 
-            {   // switch OFF highlight if user acknowledge Alarm / Indication by
-                // resetting S52_MAR_GUARDZONE_ALARM to 0 (OFF - no alarm)
-                S57_geo *geo = S52_PL_getGeo(obj);
-                if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_getHighlight(geo))
-                    S57_setHighlight(geo, FALSE);
-            }
+//             {   // switch OFF highlight if user acknowledge Alarm / Indication by
+//                 // resetting S52_MAR_GUARDZONE_ALARM to 0 (OFF - no alarm)
+//                 S57_geo *geo = S52_PL_getGeo(obj);
+//                 if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_getHighlight(geo))
+//                     S57_setHighlight(geo, FALSE);
+//             }
 
-            // SCAMIN & PLib (disp cat)
-            if (FALSE == S52_GL_isSupp(obj)) {
-                S52_GL_draw(obj, NULL);
-                S52_GL_drawText(obj, NULL);
+//             // SCAMIN & PLib (disp cat)
+//             if (FALSE == S52_GL_isSupp(obj)) {
+//                 S52_GL_draw(obj, NULL);
+//                 S52_GL_drawText(obj, NULL);
 
-                //PRINTF("DEBUG:%i: _drawLast() - %s\n", _nTotal, S52_PL_getOBCL(obj));
-            } else {
-                ++_nCull;
+//                 //PRINTF("DEBUG:%i: _drawLast() - %s\n", _nTotal, S52_PL_getOBCL(obj));
+//             } else {
+//                 ++_nCull;
 
-                //PRINTF("DEBUG:%i: SCAMIN - %s\n", _nTotal, S57_getName(geo));
+//                 //PRINTF("DEBUG:%i: SCAMIN - %s\n", _nTotal, S57_getName(geo));
 
-                continue;
-            }
-            /////////////////////////////////////
-        }
-    //}
+//                 continue;
+//             }
+//             /////////////////////////////////////
+//         }
+//     //}
 
-    return TRUE;
-}
+//     return TRUE;
+// }
 
-DLL int    STD S52_drawLast(void)
-{
-    int ret = FALSE;
+// DLL int    STD S52_drawLast(void)
+// {
+//     int ret = FALSE;
 
-#if (defined(S52_USE_ANDROID) || defined(S52_USE_MINGW))
-    // do not wait if an other thread is allready drawing
-    if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
-#else
-    if (FALSE == g_mutex_trylock(&_mp_mutex)) {
-#endif
+// #if (defined(S52_USE_ANDROID) || defined(S52_USE_MINGW))
+//     // do not wait if an other thread is allready drawing
+//     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
+// #else
+//     if (FALSE == g_mutex_trylock(&_mp_mutex)) {
+// #endif
 
-        static GTimeVal now;
-        g_get_current_time(&now);
-        now.tv_usec = 0;  // will print time without frac of sec
+//         static GTimeVal now;
+//         g_get_current_time(&now);
+//         now.tv_usec = 0;  // will print time without frac of sec
 
-        // FIXME: add/mod struct _mutexOwner{name;s57id;}_mutexOwner;
-        PRINTF("WARNING: trylock failed [%s:%u:%s]\n", _mutexOwner, _mutexOwnerS57ID, g_time_val_to_iso8601(&now));
+//         // FIXME: add/mod struct _mutexOwner{name;s57id;}_mutexOwner;
+//         PRINTF("WARNING: trylock failed [%s:%u:%s]\n", _mutexOwner, _mutexOwnerS57ID, g_time_val_to_iso8601(&now));
 
-        //PRINTF("WARNING: trylock failed [%s:%s]\n", _mutexOwner, g_time_val_to_iso8601(&now));
+//         //PRINTF("WARNING: trylock failed [%s:%s]\n", _mutexOwner, g_time_val_to_iso8601(&now));
 
-        return FALSE;
-    }
+//         return FALSE;
+//     }
 
-    S52_CHECK_INIT;
+//     S52_CHECK_INIT;
 
-#if !defined(S52_USE_RADAR)
-    EGL_BEG(LAST);
-#endif
+// #if !defined(S52_USE_RADAR)
+//     EGL_BEG(LAST);
+// #endif
 
-    if (NULL == S57_getPrjStr())
-        goto exit;
+//     if (NULL == S57_getPrjStr())
+//         goto exit;
 
-    if (S52_MAR_DISP_LAYER_LAST_NONE == (int) S52_MP_get(S52_MAR_DISP_LAYER_LAST))
-        goto exit;
+//     if (S52_MAR_DISP_LAYER_LAST_NONE == (int) S52_MP_get(S52_MAR_DISP_LAYER_LAST))
+//         goto exit;
 
-    g_timer_reset(_timer);
+//     g_timer_reset(_timer);
 
-#ifdef S52_USE_BACKTRACE
-    // debug
-    //S52_utils_mtrace();
-#endif
+// #ifdef S52_USE_BACKTRACE
+//     // debug
+//     //S52_utils_mtrace();
+// #endif
 
-    if (TRUE == S52_GL_begin(S52_GL_LAST)) {
+//     if (TRUE == S52_GL_begin(S52_GL_LAST)) {
 
-        ////////////////////////////////////////////////////////////////////
-        // APP: no CS code for Mariner - all in GL now
-        //_app();
+//         ////////////////////////////////////////////////////////////////////
+//         // APP: no CS code for Mariner - all in GL now
+//         //_app();
 
-        // check stray vessel (occur when s52ais/gpsd restart)
-        if (0.0 != S52_MP_get(S52_MAR_DISP_VESSEL_DELAY)) {
-            GPtrArray *rbinPT = _marinerCell->renderBin[S52_PRIO_MARINR][S52_POINT];
-            g_ptr_array_foreach(rbinPT, _delOldVessel, rbinPT);
-            GPtrArray *rbinLN = _marinerCell->renderBin[S52_PRIO_MARINR][S52_LINES];
-            g_ptr_array_foreach(rbinLN, _delOldVessel, rbinLN);
-        }
+//         // check stray vessel (occur when s52ais/gpsd restart)
+//         if (0.0 != S52_MP_get(S52_MAR_DISP_VESSEL_DELAY)) {
+//             GPtrArray *rbinPT = _marinerCell->renderBin[S52_PRIO_MARINR][S52_POINT];
+//             g_ptr_array_foreach(rbinPT, _delOldVessel, rbinPT);
+//             GPtrArray *rbinLN = _marinerCell->renderBin[S52_PRIO_MARINR][S52_LINES];
+//             g_ptr_array_foreach(rbinLN, _delOldVessel, rbinLN);
+//         }
 
-        ////////////////////////////////////////////////////////////////////
-        // CULL / DRAW:
-        //
-        _nCull = 0;
-        _nTotal= 0;
+//         ////////////////////////////////////////////////////////////////////
+//         // CULL / DRAW:
+//         //
+//         _nCull = 0;
+//         _nTotal= 0;
 
-        // Mariners' (layer 9 - Last)
-        ret = TRUE;
-        for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
-            ret = ret && _drawLast(_marinerCell->renderBin[S52_PRIO_MARINR][j]);
-        }
+//         // Mariners' (layer 9 - Last)
+//         ret = TRUE;
+//         for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
+//             ret = ret && _drawLast(_marinerCell->renderBin[S52_PRIO_MARINR][j]);
+//         }
 
-        S52_GL_end(S52_GL_LAST);
-    } else {
-        PRINTF("WARNING: S52_GL_begin() failed\n");
-    }
+//         S52_GL_end(S52_GL_LAST);
+//     } else {
+//         PRINTF("WARNING: S52_GL_begin() failed\n");
+//     }
 
-exit:
+// exit:
 
-    EGL_END(LAST);
+//     EGL_END(LAST);
 
-#ifdef S52_DEBUG
-    {
-        //gdouble sec = g_timer_elapsed(_timer, NULL);
-        //PRINTF("DRAWLAST: %.0f msec (cull/total) %i/%i\n", sec * 1000, _nCull, _nTotal);
-    }
-#endif
+// #ifdef S52_DEBUG
+//     {
+//         //gdouble sec = g_timer_elapsed(_timer, NULL);
+//         //PRINTF("DRAWLAST: %.0f msec (cull/total) %i/%i\n", sec * 1000, _nCull, _nTotal);
+//     }
+// #endif
 
-#ifdef S52_USE_BACKTRACE
-    // debug
-    //S52_utils_muntrace();
-#endif
+// #ifdef S52_USE_BACKTRACE
+//     // debug
+//     //S52_utils_muntrace();
+// #endif
 
-    GMUTEXUNLOCK(&_mp_mutex);
+//     GMUTEXUNLOCK(&_mp_mutex);
 
-    return ret;
-}
+//     return ret;
+// }
 
 //void (*GFunc) (gpointer data, gpointer user_data);
 static void       _linkPLib(S52_obj *obj, _cell *tmpCell)
@@ -4031,7 +4142,7 @@ static void       _linkPLib(S52_obj *obj, _cell *tmpCell)
     g_assert(obj == tmpObj);
 
     // 2 - flush old Display List / VBO
-    S52_GL_delDL(obj);
+    //S52_GL_delDL(obj);
 
     // 3 - put in new render bin
     _insertS52obj(tmpCell, obj);
@@ -4224,280 +4335,280 @@ exit:
 }
 #endif  // S52_USE_GV
 
-static int        _validate_screenPos(double *xx, double *yy)
-// return TRUE
-{
-    int x;
-    int y;
-    int width;
-    int height;
+// static int        _validate_screenPos(double *xx, double *yy)
+// // return TRUE
+// {
+//     int x;
+//     int y;
+//     int width;
+//     int height;
 
-    if (FALSE == S52_GL_getViewPort(&x, &y, &width, &height))
-        return FALSE;
+//     if (FALSE == S52_GL_getViewPort(&x, &y, &width, &height))
+//         return FALSE;
 
-    if (*xx < 0.0)      *xx = 0.0;
-    if (*xx > x+width)  *xx = x + width;
+//     if (*xx < 0.0)      *xx = 0.0;
+//     if (*xx > x+width)  *xx = x + width;
 
-    if (*yy < 0.0)      *yy = 0.0;
-    if (*yy > y+height) *yy = y + height;
+//     if (*yy < 0.0)      *yy = 0.0;
+//     if (*yy > y+height) *yy = y + height;
 
-    return TRUE;
-}
+//     return TRUE;
+// }
 
 
-DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
-{
-    int ret = FALSE;
+// DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
+// {
+//     int ret = FALSE;
 
-    return_if_null(colorName);
-    return_if_null(str);
+//     return_if_null(colorName);
+//     return_if_null(str);
 
-    S52_CHECK_MUTX_INIT_EGLBEG(STR);
+//     S52_CHECK_MUTX_INIT_EGLBEG(STR);
 
-    if (NULL == S57_getPrjStr())
-        goto exit;
+//     if (NULL == S57_getPrjStr())
+//         goto exit;
 
-    ret = _validate_screenPos(&pixels_x, &pixels_y);
-    if (FALSE == ret) {
-        PRINTF("WARNING: _validate_screenPos() failed\n");
-        goto exit;
-    }
+//     ret = _validate_screenPos(&pixels_x, &pixels_y);
+//     if (FALSE == ret) {
+//         PRINTF("WARNING: _validate_screenPos() failed\n");
+//         goto exit;
+//     }
 
-    //PRINTF("X:%f Y:%f color:%s bsize:%i str:%s\n", pixels_x, pixels_y, colorName, bsize, str);
+//     //PRINTF("X:%f Y:%f color:%s bsize:%i str:%s\n", pixels_x, pixels_y, colorName, bsize, str);
 
-    ret = S52_GL_drawStrWin(pixels_x, pixels_y, colorName, bsize, str);
+//     ret = S52_GL_drawStrWin(pixels_x, pixels_y, colorName, bsize, str);
 
 
-exit:
+// exit:
 
-    EGL_END(STR);
+//     EGL_END(STR);
 
-    GMUTEXUNLOCK(&_mp_mutex);
+//     GMUTEXUNLOCK(&_mp_mutex);
 
-    return ret;
-}
+//     return ret;
+// }
 
-DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north)
-{
-    int ret = FALSE;
+// DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north)
+// {
+//     int ret = FALSE;
 
-    // FIXME: try lock skip touch -
-    // happen when broken EGL does a glFinish() in EGL swap
-    S52_CHECK_MUTX_INIT_EGLBEG(BLIT);
+//     // FIXME: try lock skip touch -
+//     // happen when broken EGL does a glFinish() in EGL swap
+//     S52_CHECK_MUTX_INIT_EGLBEG(BLIT);
 
-    if (NULL == S57_getPrjStr())
-        goto exit;
+//     if (NULL == S57_getPrjStr())
+//         goto exit;
 
-    // debug
-    PRINTF("scale_x:%f, scale_y:%f, scale_z:%f, north:%f\n", scale_x, scale_y, scale_z, north);
+//     // debug
+//     PRINTF("scale_x:%f, scale_y:%f, scale_z:%f, north:%f\n", scale_x, scale_y, scale_z, north);
 
-    if (1.0 < ABS(scale_x)) {
-        PRINTF("WARNING: zoom factor X overflow (>1.0) [%f]\n", scale_x);
-        goto exit;
-    }
+//     if (1.0 < ABS(scale_x)) {
+//         PRINTF("WARNING: zoom factor X overflow (>1.0) [%f]\n", scale_x);
+//         goto exit;
+//     }
 
-    if (1.0 < ABS(scale_y)) {
-        PRINTF("WARNING: zoom factor Y overflow (>1.0) [%f]\n", scale_y);
-        goto exit;
-    }
+//     if (1.0 < ABS(scale_y)) {
+//         PRINTF("WARNING: zoom factor Y overflow (>1.0) [%f]\n", scale_y);
+//         goto exit;
+//     }
 
-    if (0.5 < ABS(scale_z)) {
-        PRINTF("WARNING: zoom factor Z overflow (>0.5) [%f]\n", scale_z);
-        goto exit;
-    }
+//     if (0.5 < ABS(scale_z)) {
+//         PRINTF("WARNING: zoom factor Z overflow (>0.5) [%f]\n", scale_z);
+//         goto exit;
+//     }
 
-    if ((north<0.0) || (360.0<=north)) {
-        PRINTF("WARNING: north (%f) over/underflow\n", north);
-        goto exit;
-    }
+//     if ((north<0.0) || (360.0<=north)) {
+//         PRINTF("WARNING: north (%f) over/underflow\n", north);
+//         goto exit;
+//     }
 
-    g_timer_reset(_timer);
+//     g_timer_reset(_timer);
 
-    if (TRUE == S52_GL_begin(S52_GL_BLIT)) {
-        ret = S52_GL_drawBlit(scale_x, scale_y, scale_z, north);
+//     if (TRUE == S52_GL_begin(S52_GL_BLIT)) {
+//         ret = S52_GL_drawBlit(scale_x, scale_y, scale_z, north);
 
-        S52_GL_end(S52_GL_BLIT);
-    } else {
-        PRINTF("WARNING: S52_GL_begin() failed\n");
-    }
+//         S52_GL_end(S52_GL_BLIT);
+//     } else {
+//         PRINTF("WARNING: S52_GL_begin() failed\n");
+//     }
 
 
-exit:
+// exit:
 
-    EGL_END(BLIT);
+//     EGL_END(BLIT);
 
-#ifdef S52_DEBUG
-    {
-        //gdouble sec = g_timer_elapsed(_timer, NULL);
-        //PRINTF("DRAWBLIT: %.0f msec\n", sec * 1000);
-    }
-#endif
+// #ifdef S52_DEBUG
+//     {
+//         //gdouble sec = g_timer_elapsed(_timer, NULL);
+//         //PRINTF("DRAWBLIT: %.0f msec\n", sec * 1000);
+//     }
+// #endif
 
-    GMUTEXUNLOCK(&_mp_mutex);
+//     GMUTEXUNLOCK(&_mp_mutex);
 
-    return ret;
-}
+//     return ret;
+// }
 
-DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
-{
-    int ret = FALSE;
+// DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
+// {
+//     int ret = FALSE;
 
-    S52_CHECK_MUTX_INIT;
+//     S52_CHECK_MUTX_INIT;
 
-    if (NULL == S57_getPrjStr())
-        goto exit;
+//     if (NULL == S57_getPrjStr())
+//         goto exit;
 
-    // check bound
-    if (FALSE == _validate_screenPos(pixels_x, pixels_y)) {
-        PRINTF("WARNING: _validate_screenPos() failed\n");
-        goto exit;
-    }
+//     // check bound
+//     if (FALSE == _validate_screenPos(pixels_x, pixels_y)) {
+//         PRINTF("WARNING: _validate_screenPos() failed\n");
+//         goto exit;
+//     }
 
-    if (FALSE == S52_GL_win2prj(pixels_x, pixels_y)) {
-        PRINTF("WARNING: S52_GL_win2prj() failed\n");
-        goto exit;
-    }
+//     if (FALSE == S52_GL_win2prj(pixels_x, pixels_y)) {
+//         PRINTF("WARNING: S52_GL_win2prj() failed\n");
+//         goto exit;
+//     }
 
-    {
-        projXY uv = {*pixels_x, *pixels_y};
-        uv = S57_prj2geo(uv);
-        *pixels_x = uv.u;
-        *pixels_y = uv.v;
-        ret = TRUE;
-    }
+//     {
+//         PJ_UV uv = {*pixels_x, *pixels_y};
+//         uv = S57_prj2geo(uv);
+//         *pixels_x = uv.u;
+//         *pixels_y = uv.v;
+//         ret = TRUE;
+//     }
 
-exit:
+// exit:
 
-    GMUTEXUNLOCK(&_mp_mutex);
+//     GMUTEXUNLOCK(&_mp_mutex);
 
-    return ret;
-}
+//     return ret;
+// }
 
-DLL int    STD S52_LL2xy(double *longitude, double *latitude)
-{
-    int ret = FALSE;
+// DLL int    STD S52_LL2xy(double *longitude, double *latitude)
+// {
+//     int ret = FALSE;
 
-    S52_CHECK_MUTX_INIT;
+//     S52_CHECK_MUTX_INIT;
 
-    if (NULL == S57_getPrjStr())
-        goto exit;
+//     if (NULL == S57_getPrjStr())
+//         goto exit;
 
-    // ----------------------------------------------------------------------------
-    // FIXME: extract to _LL2XY(guint npt, double *ppt);
-    pt3 pt = {*longitude, *latitude, 0.0};
-    if (FALSE == S57_geo2prj3dv(1, &pt)) {
-        PRINTF("WARNING: S57_geo2prj3dv() failed\n");
-        goto exit;
-    }
+//     // ----------------------------------------------------------------------------
+//     // FIXME: extract to _LL2XY(guint npt, double *ppt);
+//     pt3 pt = {*longitude, *latitude, 0.0};
+//     if (FALSE == S57_geo2prj3dv(1, &pt)) {
+//         PRINTF("WARNING: S57_geo2prj3dv() failed\n");
+//         goto exit;
+//     }
 
-    S52_GL_prj2win(&pt.x, &pt.y);
+//     S52_GL_prj2win(&pt.x, &pt.y);
 
-    *longitude = pt.x;
-    *latitude  = pt.y;
+//     *longitude = pt.x;
+//     *latitude  = pt.y;
 
-    ret = TRUE;
-exit:
+//     ret = TRUE;
+// exit:
 
-    GMUTEXUNLOCK(&_mp_mutex);
+//     GMUTEXUNLOCK(&_mp_mutex);
 
-    return ret;
-}
+//     return ret;
+// }
 
-DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
-{
-    int ret = FALSE;
+// DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
+// {
+//     int ret = FALSE;
 
-    S52_CHECK_MUTX_INIT;
+//     S52_CHECK_MUTX_INIT;
 
-    // debug
-    PRINTF("lat:%f, long:%f, range:%f north:%f\n", cLat, cLon, rNM, north);
+//     // debug
+//     PRINTF("lat:%f, long:%f, range:%f north:%f\n", cLat, cLon, rNM, north);
 
-    //*
-    if (ABS(cLat) > 90.0) {
-        PRINTF("WARNING: FAIL, cLat outside [-90..+90](%f)\n", cLat);
-        goto exit;
-    }
+//     //*
+//     if (ABS(cLat) > 90.0) {
+//         PRINTF("WARNING: FAIL, cLat outside [-90..+90](%f)\n", cLat);
+//         goto exit;
+//     }
 
-    if (ABS(cLon) > 180.0) {
-        PRINTF("WARNING: FAIL, cLon outside [-180..+180] (%f)\n", cLon);
-        goto exit;
-    }
-    //*/
+//     if (ABS(cLon) > 180.0) {
+//         PRINTF("WARNING: FAIL, cLon outside [-180..+180] (%f)\n", cLon);
+//         goto exit;
+//     }
+//     //*/
 
-    if ((rNM < MIN_RANGE) || (rNM > MAX_RANGE)) {
-        PRINTF("WARNING: FAIL, rNM outside limit (%f)\n", rNM);
-        goto exit;
-    }
+//     if ((rNM < MIN_RANGE) || (rNM > MAX_RANGE)) {
+//         PRINTF("WARNING: FAIL, rNM outside limit (%f)\n", rNM);
+//         goto exit;
+//     }
 
-    // FIXME: PROJ4 will explode here (INFINITY) for mercator
-    // Note: must validate rNM first
-    if ((ABS(cLat)*60.0 + rNM) > (90.0*60)) {
-        PRINTF("WARNING: FAIL, rangeNM > 90*60 NM (%f)\n", rNM);
-        goto exit;
-    }
+//     // FIXME: PROJ4 will explode here (INFINITY) for mercator
+//     // Note: must validate rNM first
+//     if ((ABS(cLat)*60.0 + rNM) > (90.0*60)) {
+//         PRINTF("WARNING: FAIL, rangeNM > 90*60 NM (%f)\n", rNM);
+//         goto exit;
+//     }
 
-    if ((north>=360.0) || (north<0.0)) {
-        PRINTF("WARNING: FAIL, north outside [0..360[ (%f)\n", north);
-        goto exit;
-    }
+//     if ((north>=360.0) || (north<0.0)) {
+//         PRINTF("WARNING: FAIL, north outside [0..360[ (%f)\n", north);
+//         goto exit;
+//     }
 
-    // debug
-    //PRINTF("lat:%f, long:%f, range:%f north:%f\n", cLat, cLon, rNM, north);
+//     // debug
+//     //PRINTF("lat:%f, long:%f, range:%f north:%f\n", cLat, cLon, rNM, north);
 
-    ret = S52_GL_setView(cLat, cLon, rNM, north);
+//     ret = S52_GL_setView(cLat, cLon, rNM, north);
 
-exit:
+// exit:
 
-    GMUTEXUNLOCK(&_mp_mutex);
+//     GMUTEXUNLOCK(&_mp_mutex);
 
-    //return TRUE;
-    return ret;
-}
+//     //return TRUE;
+//     return ret;
+// }
 
-DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *north)
-{
-    return_if_null(cLat);
-    return_if_null(cLon);
-    return_if_null(rNM);
-    return_if_null(north);
+// DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *north)
+// {
+//     return_if_null(cLat);
+//     return_if_null(cLon);
+//     return_if_null(rNM);
+//     return_if_null(north);
 
-    S52_CHECK_MUTX_INIT;
+//     S52_CHECK_MUTX_INIT;
 
 
-    S52_GL_getView(cLat, cLon, rNM, north);
+//     S52_GL_getView(cLat, cLon, rNM, north);
 
-    // debug
-    PRINTF("lat:%f, long:%f, range:%f north:%f\n", *cLat, *cLon, *rNM, *north);
+//     // debug
+//     PRINTF("lat:%f, long:%f, range:%f north:%f\n", *cLat, *cLon, *rNM, *north);
 
-exit:
+// exit:
 
-    GMUTEXUNLOCK(&_mp_mutex);
+//     GMUTEXUNLOCK(&_mp_mutex);
 
-    return TRUE;
-}
+//     return TRUE;
+// }
 
-DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height)
-{
-    int ret = FALSE;
+// DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height)
+// {
+//     int ret = FALSE;
 
-    S52_CHECK_MUTX_INIT;
+//     S52_CHECK_MUTX_INIT;
 
-    PRINTF("pixels_x:%i, pixels_y:%i, pixels_width:%i, pixels_height:%i\n", pixels_x, pixels_y, pixels_width, pixels_height);
+//     PRINTF("pixels_x:%i, pixels_y:%i, pixels_width:%i, pixels_height:%i\n", pixels_x, pixels_y, pixels_width, pixels_height);
 
-    //_validate_screenPos(&x, &y);
+//     //_validate_screenPos(&x, &y);
 
-    if (0<=pixels_width && 0<=pixels_height) {
-        ret = S52_GL_setViewPort(pixels_x, pixels_y, pixels_width, pixels_height);
-    } else {
-        PRINTF("WARNING: S52_setViewPort() failed (w/h<0)\n");
-    }
+//     if (0<=pixels_width && 0<=pixels_height) {
+//         ret = S52_GL_setViewPort(pixels_x, pixels_y, pixels_width, pixels_height);
+//     } else {
+//         PRINTF("WARNING: S52_setViewPort() failed (w/h<0)\n");
+//     }
 
-exit:
+// exit:
 
-    GMUTEXUNLOCK(&_mp_mutex);
+//     GMUTEXUNLOCK(&_mp_mutex);
 
-    return ret;
-}
+//     return ret;
+// }
 
 static ObjExt_t   _getCellsExt(void)
 {
@@ -4740,157 +4851,157 @@ exit:
 // FEEDBACK TO HIGHER UP MODULE OF INTERNAL STATE
 //
 
-DLL CCHAR *STD S52_pickAt(double pixels_x, double pixels_y)
-{
-    static const char *name = NULL;
+// DLL CCHAR *STD S52_pickAt(double pixels_x, double pixels_y)
+// {
+//     static const char *name = NULL;
 
-    S52_CHECK_MUTX_INIT_EGLBEG(PICK);
+//     S52_CHECK_MUTX_INIT_EGLBEG(PICK);
 
-    if (NULL == S57_getPrjStr())
-        goto exit;
+//     if (NULL == S57_getPrjStr())
+//         goto exit;
 
-    if (0.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
-        goto exit;
-    }
+//     if (0.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
+//         goto exit;
+//     }
 
-#if !defined(S52_USE_C_AGGR_C_ASSO)
-    if (3.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
-        PRINTF("WARNING: S52_MAR_DISP_CRSR_PICK mode 3 need -DS52_USE_C_AGGR_C_ASSO\n");
-        goto exit;
-    }
-#endif
+// #if !defined(S52_USE_C_AGGR_C_ASSO)
+//     if (3.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
+//         PRINTF("WARNING: S52_MAR_DISP_CRSR_PICK mode 3 need -DS52_USE_C_AGGR_C_ASSO\n");
+//         goto exit;
+//     }
+// #endif
 
-    // debug
-    PRINTF("DEBUG: pixels_x:%f, pixels_y:%f\n", pixels_x, pixels_y);
+//     // debug
+//     PRINTF("DEBUG: pixels_x:%f, pixels_y:%f\n", pixels_x, pixels_y);
 
-    // check bound
-    if (FALSE == _validate_screenPos(&pixels_x, &pixels_y)) {
-        PRINTF("WARNING: coord out of screen\n");
-        goto exit;
-    }
+//     // check bound
+//     if (FALSE == _validate_screenPos(&pixels_x, &pixels_y)) {
+//         PRINTF("WARNING: coord out of screen\n");
+//         goto exit;
+//     }
 
-    // debug - this kludge work, why?
-    //pixels_x -= 4;
-    //pixels_y -= 4;
+//     // debug - this kludge work, why?
+//     //pixels_x -= 4;
+//     //pixels_y -= 4;
 
-    // if GL1 blending is ON the cursor pick will not work
-    ///double oldAA = S52_MP_get(S52_MAR_ANTIALIAS);
-    //S52_MP_set(S52_MAR_ANTIALIAS, FALSE);
+//     // if GL1 blending is ON the cursor pick will not work
+//     ///double oldAA = S52_MP_get(S52_MAR_ANTIALIAS);
+//     //S52_MP_set(S52_MAR_ANTIALIAS, FALSE);
 
-    g_timer_reset(_timer);
+//     g_timer_reset(_timer);
 
-    int     x, y, w, h;   // hold viewport
-    // FIXME: use ObjExt_t
-    double ps,pw,pn,pe;   // hold PRJ view
-    double gs,gw,gn,ge;   // hold GEO view
-    S52_GL_getViewPort(&x,  &y,  &w,  &h);
-    S52_GL_getPRJView (&ps, &pw, &pn, &pe);
-    S52_GL_getGEOView (&gs, &gw, &gn, &ge);  // save hold GEO view
+//     int     x, y, w, h;   // hold viewport
+//     // FIXME: use ObjExt_t
+//     double ps,pw,pn,pe;   // hold PRJ view
+//     double gs,gw,gn,ge;   // hold GEO view
+//     S52_GL_getViewPort(&x,  &y,  &w,  &h);
+//     S52_GL_getPRJView (&ps, &pw, &pn, &pe);
+//     S52_GL_getGEOView (&gs, &gw, &gn, &ge);  // save hold GEO view
 
-    // --- compute pick view parameter -----------------------------
-    // pick extent
-#define PIXELS_WH 8
-    ObjExt_t ext;
-    {
-        //.N = pixels_y + 3,
-        //.S = pixels_y - 4,
-        //.E = pixels_x + 3,
-        //.W = pixels_x - 4
-        ext.N = pixels_y + PIXELS_WH/2,
-        ext.S = pixels_y - PIXELS_WH/2,
-        ext.E = pixels_x + PIXELS_WH/2,
-        ext.W = pixels_x - PIXELS_WH/2;
-    }
-    PRINTF("DEBUG: PICK PIXELS EXTENT (s/w-n/e): %.0f/%.0f - %.0f/%.0f \n", ext.S, ext.W, ext.N, ext.E);
+//     // --- compute pick view parameter -----------------------------
+//     // pick extent
+// #define PIXELS_WH 8
+//     ObjExt_t ext;
+//     {
+//         //.N = pixels_y + 3,
+//         //.S = pixels_y - 4,
+//         //.E = pixels_x + 3,
+//         //.W = pixels_x - 4
+//         ext.N = pixels_y + PIXELS_WH/2,
+//         ext.S = pixels_y - PIXELS_WH/2,
+//         ext.E = pixels_x + PIXELS_WH/2,
+//         ext.W = pixels_x - PIXELS_WH/2;
+//     }
+//     PRINTF("DEBUG: PICK PIXELS EXTENT (s/w-n/e): %.0f/%.0f - %.0f/%.0f \n", ext.S, ext.W, ext.N, ext.E);
 
-    // experiment - C oop
-    //ObjExt_t ext1 = S57_ext().init(&ext1, ext.W, ext.S, ext.E, ext.N);
-    //PRINTF("DEBUG: PICK PIXELS EXTENT (s/w-n/e): %.0f/%.0f - %.0f/%.0f \n", ext1.S, ext1.W, ext1.N, ext1.E);
+//     // experiment - C oop
+//     //ObjExt_t ext1 = S57_ext().init(&ext1, ext.W, ext.S, ext.E, ext.N);
+//     //PRINTF("DEBUG: PICK PIXELS EXTENT (s/w-n/e): %.0f/%.0f - %.0f/%.0f \n", ext1.S, ext1.W, ext1.N, ext1.E);
 
-    // this call use _vp in _win2prj()
-    S52_GL_win2prj(&ext.W, &ext.S);
-    S52_GL_win2prj(&ext.E, &ext.N);
+//     // this call use _vp in _win2prj()
+//     S52_GL_win2prj(&ext.W, &ext.S);
+//     S52_GL_win2prj(&ext.E, &ext.N);
 
-    // set projected view of the pick
-    S52_GL_setPRJView(ext.S, ext.W, ext.N, ext.E);
-    //PRINTF("DEBUG: PICK PRJ EXTENT (swne): %f, %f  %f, %f \n", ext.S, ext.W, ext.N, ext.E);
+//     // set projected view of the pick
+//     S52_GL_setPRJView(ext.S, ext.W, ext.N, ext.E);
+//     //PRINTF("DEBUG: PICK PRJ EXTENT (swne): %f, %f  %f, %f \n", ext.S, ext.W, ext.N, ext.E);
 
-    S52_GL_setViewPort(pixels_x, pixels_y, PIXELS_WH, PIXELS_WH);
+//     S52_GL_setViewPort(pixels_x, pixels_y, PIXELS_WH, PIXELS_WH);
 
-    //* ---- optimisation --------------------------------------
-    {   // compute geographic filter extent - build journal in cull()
-        // extent prj --> geo
-         projUV uv;
-        uv.u = ext.W;
-        uv.v = ext.S;
-        uv = S57_prj2geo(uv);
-        ext.W = uv.u;
-        ext.S = uv.v;
+//     //* ---- optimisation --------------------------------------
+//     {   // compute geographic filter extent - build journal in cull()
+//         // extent prj --> geo
+//          PJ_UV uv;
+//         uv.u = ext.W;
+//         uv.v = ext.S;
+//         uv = S57_prj2geo(uv);
+//         ext.W = uv.u;
+//         ext.S = uv.v;
 
-        uv.u  = ext.E;
-        uv.v  = ext.N;
-        uv = S57_prj2geo(uv);
-        ext.E = uv.u;
-        ext.N = uv.v;
+//         uv.u  = ext.E;
+//         uv.v  = ext.N;
+//         uv = S57_prj2geo(uv);
+//         ext.E = uv.u;
+//         ext.N = uv.v;
 
-        S52_GL_setGEOView(ext.S, ext.W, ext.N, ext.E);
-        //PRINTF("DEBUG: PICK GEO EXTENT (swne): %f, %f  %f, %f \n", ext.S, ext.W, ext.N, ext.E);
-    }
-    //--------------------------------------------------------
-    //*/
-
-
-    if (TRUE == S52_GL_begin(S52_GL_PICK)) {
-        _nTotal = 0;
-        _nCull  = 0;
-
-        // filter out objects that don't intersect the pick view
-        _cull(ext);
-
-        // render object that fall in the pick view
-        _draw();
-
-        // Mariners' (layer 9 - Last)
-        for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
-            _drawLast(_marinerCell->renderBin[S52_PRIO_MARINR][j]);
-        }
-
-        S52_GL_setViewPort(x, y,  w,  h );
-        S52_GL_end(S52_GL_PICK);
-    } else {
-        PRINTF("WARNING:S52_GL_begin() failed\n");
-        goto cleanup;
-    }
-
-    // get object picked
-    name = S52_GL_getNameObjPick();
-    //PRINTF("DEBUG: OBJECT PICKED (%6.1f, %6.1f): %s\n", pixels_x, pixels_y, name);
+//         S52_GL_setGEOView(ext.S, ext.W, ext.N, ext.E);
+//         //PRINTF("DEBUG: PICK GEO EXTENT (swne): %f, %f  %f, %f \n", ext.S, ext.W, ext.N, ext.E);
+//     }
+//     //--------------------------------------------------------
+//     //*/
 
 
-cleanup:
-    // restore view
-    S52_GL_setViewPort(x, y,  w,  h );
-    S52_GL_setPRJView(ps, pw, pn, pe);
-    S52_GL_setGEOView(gs, gw, gn, ge);
+//     if (TRUE == S52_GL_begin(S52_GL_PICK)) {
+//         _nTotal = 0;
+//         _nCull  = 0;
 
-    // replace original blending state
-    //S52_MP_set(S52_MAR_ANTIALIAS, oldAA);
+//         // filter out objects that don't intersect the pick view
+//         _cull(ext);
 
-exit:
+//         // render object that fall in the pick view
+//         _draw();
 
-    EGL_END(PICK);
+//         // Mariners' (layer 9 - Last)
+//         for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
+//             _drawLast(_marinerCell->renderBin[S52_PRIO_MARINR][j]);
+//         }
 
-#ifdef S52_DEBUG
-    {
-        gdouble sec = g_timer_elapsed(_timer, NULL);
-        PRINTF("DEBUG:     PICKAT: %.0f msec\n", sec * 1000);
-    }
-#endif
+//         S52_GL_setViewPort(x, y,  w,  h );
+//         S52_GL_end(S52_GL_PICK);
+//     } else {
+//         PRINTF("WARNING:S52_GL_begin() failed\n");
+//         goto cleanup;
+//     }
 
-    GMUTEXUNLOCK(&_mp_mutex);
+//     // get object picked
+//     name = S52_GL_getNameObjPick();
+//     //PRINTF("DEBUG: OBJECT PICKED (%6.1f, %6.1f): %s\n", pixels_x, pixels_y, name);
 
-    return name;
-}
+
+// cleanup:
+//     // restore view
+//     S52_GL_setViewPort(x, y,  w,  h );
+//     S52_GL_setPRJView(ps, pw, pn, pe);
+//     S52_GL_setGEOView(gs, gw, gn, ge);
+
+//     // replace original blending state
+//     //S52_MP_set(S52_MAR_ANTIALIAS, oldAA);
+
+// exit:
+
+//     EGL_END(PICK);
+
+// #ifdef S52_DEBUG
+//     {
+//         gdouble sec = g_timer_elapsed(_timer, NULL);
+//         PRINTF("DEBUG:     PICKAT: %.0f msec\n", sec * 1000);
+//     }
+// #endif
+
+//     GMUTEXUNLOCK(&_mp_mutex);
+
+//     return name;
+// }
 
 DLL CCHAR *STD S52_getPLibNameList(void)
 {
@@ -5249,29 +5360,29 @@ DLL int    STD S52_setEGLCallBack(S52_EGL_cb eglBeg, S52_EGL_cb eglEnd, void *EG
     return TRUE;
 }
 
-DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height)
-{
-    int ret = FALSE;
+// DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height)
+// {
+//     int ret = FALSE;
 
-    S52_CHECK_MUTX_INIT;
+//     S52_CHECK_MUTX_INIT;
 
-    if (NULL == S57_getPrjStr())
-        goto exit;
+//     if (NULL == S57_getPrjStr())
+//         goto exit;
 
-    if (0 == S57ID) {
-        S52_GL_dumpS57IDPixels(toFilename, NULL, width, height);
-    } else {
-        S52_obj *obj = S52_PL_isObjValid(S57ID);
-        if (NULL != obj)
-            ret = S52_GL_dumpS57IDPixels(toFilename, obj, width, height);
-    }
+//     if (0 == S57ID) {
+//         S52_GL_dumpS57IDPixels(toFilename, NULL, width, height);
+//     } else {
+//         S52_obj *obj = S52_PL_isObjValid(S57ID);
+//         if (NULL != obj)
+//             ret = S52_GL_dumpS57IDPixels(toFilename, obj, width, height);
+//     }
 
-exit:
+// exit:
 
-    GMUTEXUNLOCK(&_mp_mutex);
+//     GMUTEXUNLOCK(&_mp_mutex);
 
-    return ret;
-}
+//     return ret;
+// }
 
 static int                 _isMarObjValid(S52_obj *obj, const char *objName)
 // return TRUE if the class name of 'obj' is 'objName' else FALSE
@@ -5489,13 +5600,13 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
                 *dst++ = *src++;
             }
 
-            if (FALSE == S57_geo2prj3dv(xyznbr, (pt3*)gxyz)) {
-                PRINTF("WARNING: projection failed\n");
-                g_assert(0);
-                // FIXME: if we get here free mem
-                //return NULL;
-                return FALSE;
-            }
+            // if (FALSE == S57_geo2prj3dv(xyznbr, (pt3*)gxyz)) {
+            //     PRINTF("WARNING: projection failed\n");
+            //     g_assert(0);
+            //     // FIXME: if we get here free mem
+            //     //return NULL;
+            //     return FALSE;
+            // }
         } else {
             // create an empty xyz buffer
             gxyz = g_new0(double, xyznbr*3);
@@ -5584,8 +5695,8 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
 
     S52_CHECK_MUTX_INIT;
 
-    if (NULL == S57_getPrjStr())
-        goto exit;
+    // if (NULL == S57_getPrjStr())
+    //     goto exit;
 
     // debug
     PRINTF("plibObjName:%s, objType:%i, xyznbr:%u, xyz:%p, listAttVal:<%s>\n",
@@ -5752,349 +5863,349 @@ exit:
     return clrlin;
 }
 
-DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDist,
-                                      double latBegin, double lonBegin, double latEnd, double lonEnd,
-                                      S52ObjectHandle previousLEGLIN)
-{
-    S52ObjectHandle leglinH = FALSE;
+// DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDist,
+//                                       double latBegin, double lonBegin, double latEnd, double lonEnd,
+//                                       S52ObjectHandle previousLEGLIN)
+// {
+//     S52ObjectHandle leglinH = FALSE;
 
-    S52_CHECK_MUTX_INIT;
+//     S52_CHECK_MUTX_INIT;
 
-    if (NULL == S57_getPrjStr())
-        goto exit;
+//     if (NULL == S57_getPrjStr())
+//         goto exit;
 
-    PRINTF("select:%i, plnspd:%f, wholinDist:%f, latBegin:%f, lonBegin:%f, latEnd:%f, lonEnd:%f\n",
-            select,    plnspd,    wholinDist,    latBegin,    lonBegin,    latEnd,    lonEnd);
+//     PRINTF("select:%i, plnspd:%f, wholinDist:%f, latBegin:%f, lonBegin:%f, latEnd:%f, lonEnd:%f\n",
+//             select,    plnspd,    wholinDist,    latBegin,    lonBegin,    latEnd,    lonEnd);
 
-    // validation
-    if (1!=select && 2!=select) {
-        PRINTF("WARNING: 'select' must be 1 or 2 (%i).. reset to 1\n", select);
-        select = 1;
-    }
+//     // validation
+//     if (1!=select && 2!=select) {
+//         PRINTF("WARNING: 'select' must be 1 or 2 (%i).. reset to 1\n", select);
+//         select = 1;
+//     }
 
-    // FIXME: validate_distance; wholinDist is not greater then begin-end
-    // FIXME: validate_double; plnspd, wholinDist
-    latBegin = _validate_lat(latBegin);
-    lonBegin = _validate_lon(lonBegin);
-    latEnd   = _validate_lat(latEnd);
-    lonEnd   = _validate_lon(lonEnd);
+//     // FIXME: validate_distance; wholinDist is not greater then begin-end
+//     // FIXME: validate_double; plnspd, wholinDist
+//     latBegin = _validate_lat(latBegin);
+//     lonBegin = _validate_lon(lonBegin);
+//     latEnd   = _validate_lat(latEnd);
+//     lonEnd   = _validate_lon(lonEnd);
 
-    // check if same point
-    if (latBegin==latEnd  && lonBegin==lonEnd) {
-        PRINTF("WARNING: rejecting this leglin (same point)\n");
-        goto exit;
-    }
+//     // check if same point
+//     if (latBegin==latEnd  && lonBegin==lonEnd) {
+//         PRINTF("WARNING: rejecting this leglin (same point)\n");
+//         goto exit;
+//     }
 
-    // ---  check if hazard inside Guard Zone ---
-    // FIXME: call _GuardZoneCheck(), document what object is checked for, right now CS/DEPCNT02 S57_isHazard()
-    // FIXME: GL_proj will fail if no GL_draw() call was invoqued first
-    // - FIX: call _draw() or GL_proj_init
-    if (0.0 != S52_MP_get(S52_MAR_GUARDZONE_BEAM)) {
-        double oldCRSR_PICK = S52_MP_get(S52_MAR_DISP_CRSR_PICK);
-        double beam2        = S52_MP_get(S52_MAR_GUARDZONE_BEAM)/2.0;
-        double ps,pw,pn,pe;  // hold PRJ view
-        double gs,gw,gn,ge;  // hold GEO view
-        int    x,y,w,h;      // hold ViewPort
+//     // ---  check if hazard inside Guard Zone ---
+//     // FIXME: call _GuardZoneCheck(), document what object is checked for, right now CS/DEPCNT02 S57_isHazard()
+//     // FIXME: GL_proj will fail if no GL_draw() call was invoqued first
+//     // - FIX: call _draw() or GL_proj_init
+//     if (0.0 != S52_MP_get(S52_MAR_GUARDZONE_BEAM)) {
+//         double oldCRSR_PICK = S52_MP_get(S52_MAR_DISP_CRSR_PICK);
+//         double beam2        = S52_MP_get(S52_MAR_GUARDZONE_BEAM)/2.0;
+//         double ps,pw,pn,pe;  // hold PRJ view
+//         double gs,gw,gn,ge;  // hold GEO view
+//         int    x,y,w,h;      // hold ViewPort
 
-        PRINTF("DEBUG: leglin Guard Zone check -start-\n");
+//         PRINTF("DEBUG: leglin Guard Zone check -start-\n");
 
-        /*
-        ObjExt_t ext = {
-            .S =  INFINITY,
-            .W =  INFINITY,
-            .N = -INFINITY,
-            .E = -INFINITY
-        };
-        */
-        /*
-        ObjExt_t ext = {
-            .N = (latBegin > latEnd) ? latBegin : latEnd,
-            .S = (latBegin < latEnd) ? latBegin : latEnd,
-            .E = (lonBegin < lonEnd) ? lonBegin : lonEnd,
-            .W = (lonBegin > lonEnd) ? lonBegin : lonEnd
-        };
-        */
+//         /*
+//         ObjExt_t ext = {
+//             .S =  INFINITY,
+//             .W =  INFINITY,
+//             .N = -INFINITY,
+//             .E = -INFINITY
+//         };
+//         */
+//         /*
+//         ObjExt_t ext = {
+//             .N = (latBegin > latEnd) ? latBegin : latEnd,
+//             .S = (latBegin < latEnd) ? latBegin : latEnd,
+//             .E = (lonBegin < lonEnd) ? lonBegin : lonEnd,
+//             .W = (lonBegin > lonEnd) ? lonBegin : lonEnd
+//         };
+//         */
 
-        //* C/C++
-        ObjExt_t ext;
-        {
-            ext.N = (latBegin > latEnd) ? latBegin : latEnd,
-            ext.S = (latBegin < latEnd) ? latBegin : latEnd,
-            ext.E = (lonBegin < lonEnd) ? lonBegin : lonEnd,
-            ext.W = (lonBegin > lonEnd) ? lonBegin : lonEnd;
-        }
-        //*/
-        // debug - C oop
-        //ObjExt_t ext = S57_ext().init(&ext, latBegin, latEnd, lonBegin, lonEnd);
+//         //* C/C++
+//         ObjExt_t ext;
+//         {
+//             ext.N = (latBegin > latEnd) ? latBegin : latEnd,
+//             ext.S = (latBegin < latEnd) ? latBegin : latEnd,
+//             ext.E = (lonBegin < lonEnd) ? lonBegin : lonEnd,
+//             ext.W = (lonBegin > lonEnd) ? lonBegin : lonEnd;
+//         }
+//         //*/
+//         // debug - C oop
+//         //ObjExt_t ext = S57_ext().init(&ext, latBegin, latEnd, lonBegin, lonEnd);
 
-        // set pick to stack mode
-        S52_MP_set(S52_MAR_DISP_CRSR_PICK, 2.0);
-
-
-
-        // save current view & set view of the pick
-        S52_GL_getViewPort(&x, &y, &w, &h);
-        S52_GL_getPRJView(&ps, &pw, &pn, &pe);
-        S52_GL_getGEOView(&gs, &gw, &gn, &ge);
-
-        //   +-------------+
-        //   |  | beam2    |
-        //   |  |          |
-        //   |--o A        |
-        //   |  \\\        |
-        //   |   \\\       |
-        //   |    \\\  LEG |
-        //   |     \\\     |
-        //   |      \\\    |
-        //   |       \\\   |
-        //   |        \\\  |
-        //   |        B o--|
-        //   |          |  |
-        //   |    beam2 |  |
-        //   +-------------+
+//         // set pick to stack mode
+//         S52_MP_set(S52_MAR_DISP_CRSR_PICK, 2.0);
 
 
-        pt3 pt[2] = {{ext.W, ext.S, 0.0}, {ext.E, ext.N, 0.0}};
-        S57_geo2prj3dv(2, pt);
-        S52_GL_setViewPort(w/2, h/2, 1, 1);             // if chart rotated --> x=w/2, y=h/2
-        // FIXME: is -+beam2 the max
-        S52_GL_setPRJView(pt[0].y-beam2, pt[0].x-beam2, pt[1].y+beam2, pt[1].x+beam2);  // snap to viewPort
-        // FIXME: augment GEO for -+beam2
-        S52_GL_setGEOView(ext.S, ext.W, ext.N, ext.E);  // to cull obj
 
-        if (TRUE == S52_GL_begin(S52_GL_PICK)) {
-            // but only "over" used
-            _resetJournal();
+//         // save current view & set view of the pick
+//         S52_GL_getViewPort(&x, &y, &w, &h);
+//         S52_GL_getPRJView(&ps, &pw, &pn, &pe);
+//         S52_GL_getGEOView(&gs, &gw, &gn, &ge);
 
-            _app();
-
-            // cull
-            // all cells - larger region first (small scale)
-            for (guint i=_cellList->len-1; i>0; --i) {
-                _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-#ifdef S52_USE_WORLD
-                if ((0==g_strcmp0(WORLD_SHP, c->filename->str)) && (FALSE==(int)S52_MP_get(S52_MAR_DISP_WORLD)))
-                    continue;
-#endif
-                // is this chart visible
-                if (TRUE == _intersectCELL(c->geoExt, ext)) {
-                    for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
-                        // FIXME: all object on S52_PRIO_HAZRDS layer of Mariners
-
-                        // layer 8, over radar, BASE, LINE
-                        //GPtrArray *rbin = c->renderBin[S52_PRIO_HAZRDS][S52_LINES];
-                        GPtrArray *rbin = c->renderBin[S52_PRIO_HAZRDS][j];
-
-                        // for each object
-                        for (guint idx=0; idx<rbin->len; ++idx) {
-                            S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                            S57_geo *geo = S52_PL_getGeo(obj);
-
-                            // FIXME: process everything M/P/L/A on PRIO_HAZRDS layer
-                            //if (FALSE == S57_isHazard(geo))
-                            //    continue;
-
-                            PRINTF("DEBUG: PRIO_HAZRDS: %c:%s\n", S57_getObjtype(geo), S57_getName(geo));
-
-                            // outside view
-                            // Note: object can be inside 'ext' but outside the 'view' (cursor pick)
-                            if (TRUE == S52_GL_isOFFview(obj)) {
-                                ++_nCull;
-                                continue;
-                            }
-
-                            // over radar
-                            g_ptr_array_add(c->objList_over, obj);
-                        }
-                    }
-                }
-            }
-
-            // render object that fall in the pick view
-            // FIXME: need timer to see if using GPU really faster vs CPU only
-            _draw();
-
-            S52_GL_setViewPort(x, y, w, h);
-
-            S52_GL_end(S52_GL_PICK);
-        } else {
-            PRINTF("WARNING: S52_GL_begin() failed\n");
-        }
-
-        // put back original value
-        S52_GL_setViewPort(x, y, w, h);
-        S52_GL_setPRJView(ps, pw, pn, pe);
-        S52_GL_setGEOView(gs, gw, gn, ge);
-
-        S52_MP_set(S52_MAR_DISP_CRSR_PICK, oldCRSR_PICK);
-
-        {
-            pt3 pt[2] = {{lonBegin, latBegin, 0.0}, {lonEnd, latEnd, 0.0}};
-            S57_geo2prj3dv(2, pt);
-            double cog = ATAN2TODEG(pt);
-            pt3 p[5];  // first == last
-
-            // experiment I - align guardzone on lat/lon
-            //  LEG/
-            //    /    /
-            //   /    / beam/2
-            //   |\  /
-            //   | \/
-            //   | /
-            //   |/
-            //   +   lat_beam2
-            //   lon_leg
+//         //   +-------------+
+//         //   |  | beam2    |
+//         //   |  |          |
+//         //   |--o A        |
+//         //   |  \\\        |
+//         //   |   \\\       |
+//         //   |    \\\  LEG |
+//         //   |     \\\     |
+//         //   |      \\\    |
+//         //   |       \\\   |
+//         //   |        \\\  |
+//         //   |        B o--|
+//         //   |          |  |
+//         //   |    beam2 |  |
+//         //   +-------------+
 
 
-            /* CCW
-            xyz2[ 0] = xyz[0] - beam2/sin((90.0 - cog)*DEG_TO_RAD);  // lonBeg
-            xyz2[ 1] = xyz[1];                                       // latBeg
-            //xyz2[ 0] = xyz[0];  // lonBeg
-            //xyz2[ 1] = xyz[1] - beam2/sin(cog*DEG_TO_RAD);  // latBeg
-            xyz2[ 2] = 0.0;
+//         pt3 pt[2] = {{ext.W, ext.S, 0.0}, {ext.E, ext.N, 0.0}};
+//         S57_geo2prj3dv(2, pt);
+//         S52_GL_setViewPort(w/2, h/2, 1, 1);             // if chart rotated --> x=w/2, y=h/2
+//         // FIXME: is -+beam2 the max
+//         S52_GL_setPRJView(pt[0].y-beam2, pt[0].x-beam2, pt[1].y+beam2, pt[1].x+beam2);  // snap to viewPort
+//         // FIXME: augment GEO for -+beam2
+//         S52_GL_setGEOView(ext.S, ext.W, ext.N, ext.E);  // to cull obj
 
-            //xyz2[ 3] = xyz[3];                                       // lonEnd
-            //xyz2[ 4] = xyz[4] + beam2/sin(cog*DEG_TO_RAD);           // latEnd
-            xyz2[ 3] = xyz[3] + beam2/sin((90.0 - cog)*DEG_TO_RAD);                                       // lonEnd
-            xyz2[ 4] = xyz[4];           // latEnd
-            xyz2[ 5] = 0.0;
+//         if (TRUE == S52_GL_begin(S52_GL_PICK)) {
+//             // but only "over" used
+//             _resetJournal();
 
-            xyz2[ 9] = xyz[0];                                       // lonBeg
-            xyz2[10] = xyz[1] - beam2/sin(cog*DEG_TO_RAD);           // latBeg
-            xyz2[11] = 0.0;
+//             _app();
 
-            xyz2[ 6] = xyz[3] + beam2/sin((90.0 - cog)*DEG_TO_RAD);  // lonEnd
-            xyz2[ 7] = xyz[4];                                       // latEnd
-            xyz2[ 8] = 0.0;
-            //*/
+//             // cull
+//             // all cells - larger region first (small scale)
+//             for (guint i=_cellList->len-1; i>0; --i) {
+//                 _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+// #ifdef S52_USE_WORLD
+//                 if ((0==g_strcmp0(WORLD_SHP, c->filename->str)) && (FALSE==(int)S52_MP_get(S52_MAR_DISP_WORLD)))
+//                     continue;
+// #endif
+//                 // is this chart visible
+//                 if (TRUE == _intersectCELL(c->geoExt, ext)) {
+//                     for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
+//                         // FIXME: all object on S52_PRIO_HAZRDS layer of Mariners
 
-            /* CW
-            xyz2[ 0] = xyz[0] - beam2/sin((90.0 - cog)*DEG_TO_RAD);  // lonBeg
-            xyz2[ 1] = xyz[1];                                       // latBeg
-            xyz2[ 2] = 0.0;
+//                         // layer 8, over radar, BASE, LINE
+//                         //GPtrArray *rbin = c->renderBin[S52_PRIO_HAZRDS][S52_LINES];
+//                         GPtrArray *rbin = c->renderBin[S52_PRIO_HAZRDS][j];
 
-            xyz2[ 9] = xyz[3];                                       // lonEnd
-            xyz2[10] = xyz[4] + beam2/sin(cog*DEG_TO_RAD);           // latEnd
-            xyz2[11] = 0.0;
+//                         // for each object
+//                         for (guint idx=0; idx<rbin->len; ++idx) {
+//                             S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+//                             S57_geo *geo = S52_PL_getGeo(obj);
 
-            xyz2[ 3] = xyz[0];                                       // lonBeg
-            xyz2[ 4] = xyz[1] - beam2/sin(cog*DEG_TO_RAD);           // latBeg
-            xyz2[ 5] = 0.0;
+//                             // FIXME: process everything M/P/L/A on PRIO_HAZRDS layer
+//                             //if (FALSE == S57_isHazard(geo))
+//                             //    continue;
 
-            xyz2[ 6] = xyz[3] + beam2/sin((90.0 - cog)*DEG_TO_RAD);  // lonEnd
-            xyz2[ 7] = xyz[4];                                       // latEnd
-            xyz2[ 8] = 0.0;
+//                             PRINTF("DEBUG: PRIO_HAZRDS: %c:%s\n", S57_getObjtype(geo), S57_getName(geo));
 
-            xyz2[12] =   // lonEnd
-            xyz2[13] =   // latEnd
-            xyz2[14] = 0.0;
-            //*/
+//                             // outside view
+//                             // Note: object can be inside 'ext' but outside the 'view' (cursor pick)
+//                             if (TRUE == S52_GL_isOFFview(obj)) {
+//                                 ++_nCull;
+//                                 continue;
+//                             }
 
-            // experiment II - check rectangular GuardZone then check WP GuardZone
-            // OR add 2 pts (one at each end) beam2 length that extend leg!
+//                             // over radar
+//                             g_ptr_array_add(c->objList_over, obj);
+//                         }
+//                     }
+//                 }
+//             }
 
-            // Corner-case:
-            //
-            //    LEG1  *
-            // -------+ *   DEPCNT
-            //        | *
-            //        | *****
-            //     +--+--+
-            //     |  |  |
-            //     |  |  |  LEG2
-            // ----+--+  |
-            //     |     |
-            //     |     |
+//             // render object that fall in the pick view
+//             // FIXME: need timer to see if using GPU really faster vs CPU only
+//             _draw();
 
-            double dlon = cos(cog*DEG_TO_RAD) * beam2;
-            double dlat = sin(cog*DEG_TO_RAD) * beam2;
+//             S52_GL_setViewPort(x, y, w, h);
 
-            // CW
-            // starboard
-            p[0].x = pt[0].x + dlon;  // lonBeg
-            p[0].y = pt[0].y - dlat;  // latBeg
-            p[0].z = 0.0;
+//             S52_GL_end(S52_GL_PICK);
+//         } else {
+//             PRINTF("WARNING: S52_GL_begin() failed\n");
+//         }
 
-            // port
-            p[1].x = pt[0].x - dlon;  // lonBeg
-            p[1].y = pt[0].y + dlat;  // latBeg
-            p[1].z = 0.0;
+//         // put back original value
+//         S52_GL_setViewPort(x, y, w, h);
+//         S52_GL_setPRJView(ps, pw, pn, pe);
+//         S52_GL_setGEOView(gs, gw, gn, ge);
 
-            // port
-            p[2].x = pt[1].x - dlon;  // lonEnd
-            p[2].y = pt[1].y + dlat;  // latEnd
-            p[2].z = 0.0;
+//         S52_MP_set(S52_MAR_DISP_CRSR_PICK, oldCRSR_PICK);
 
-            // sarboard
-            p[3].x = pt[1].x + dlon;  // lonEnd
-            p[3].y = pt[1].y - dlat;  // latEnd
-            p[3].z = 0.0;
+//         {
+//             pt3 pt[2] = {{lonBegin, latBegin, 0.0}, {lonEnd, latEnd, 0.0}};
+//             S57_geo2prj3dv(2, pt);
+//             double cog = ATAN2TODEG(pt);
+//             pt3 p[5];  // first == last
 
-            // loop line
-            p[4].x = pt[0].x;       //
-            p[4].y = pt[0].y;       //
-            p[4].z = 0.0;
+//             // experiment I - align guardzone on lat/lon
+//             //  LEG/
+//             //    /    /
+//             //   /    / beam/2
+//             //   |\  /
+//             //   | \/
+//             //   | /
+//             //   |/
+//             //   +   lat_beam2
+//             //   lon_leg
 
-            if (TRUE == S52_GL_isHazard(5, p)) {
-                S52_MP_set(S52_MAR_GUARDZONE_ALARM, 2.0);  // indication
-            }
-        }
-    }  // if S52_MAR_GUARDZONE_ALARM
 
-    {   // create LEGLIN
-        char   attval[80];
+//             /* CCW
+//             xyz2[ 0] = xyz[0] - beam2/sin((90.0 - cog)*DEG_TO_RAD);  // lonBeg
+//             xyz2[ 1] = xyz[1];                                       // latBeg
+//             //xyz2[ 0] = xyz[0];  // lonBeg
+//             //xyz2[ 1] = xyz[1] - beam2/sin(cog*DEG_TO_RAD);  // latBeg
+//             xyz2[ 2] = 0.0;
 
-        pt3 pt[2] = {{lonBegin, latBegin, 0.0}, {lonEnd, latEnd, 0.0}};
-        S57_geo2prj3dv(2, pt);
-        double cog = ATAN2TODEG(pt);
+//             //xyz2[ 3] = xyz[3];                                       // lonEnd
+//             //xyz2[ 4] = xyz[4] + beam2/sin(cog*DEG_TO_RAD);           // latEnd
+//             xyz2[ 3] = xyz[3] + beam2/sin((90.0 - cog)*DEG_TO_RAD);                                       // lonEnd
+//             xyz2[ 4] = xyz[4];           // latEnd
+//             xyz2[ 5] = 0.0;
 
-        // FIXME: used leglin to get cog when rendering
-        if (0.0 != wholinDist) {
-            //SNPRINTF(attval, 80, "select:%i,plnspd:%f,_wholin_dist:%f", select, plnspd, wholinDist);
-            SNPRINTF(attval, 80, "leglin:%f,select:%i,plnspd:%f,_wholin_dist:%f", cog, select, plnspd, wholinDist);
-        } else {
-            //SNPRINTF(attval, 80, "select:%i,plnspd:%f", select, plnspd);
-            SNPRINTF(attval, 80, "leglin:%f,select:%i,plnspd:%f", cog, select, plnspd);
-        }
+//             xyz2[ 9] = xyz[0];                                       // lonBeg
+//             xyz2[10] = xyz[1] - beam2/sin(cog*DEG_TO_RAD);           // latBeg
+//             xyz2[11] = 0.0;
 
-        double xyz[6] = {lonBegin, latBegin, 0.0, lonEnd, latEnd, 0.0};
-        leglinH = _newMarObj("leglin", S52_LINES, 2, xyz, attval);
-        if (FALSE == leglinH) {
-            PRINTF("WARNING: LEGLIN_H not a valid S52ObjectHandle\n");
-            g_assert(0);
-            goto exit;
-        }
+//             xyz2[ 6] = xyz[3] + beam2/sin((90.0 - cog)*DEG_TO_RAD);  // lonEnd
+//             xyz2[ 7] = xyz[4];                                       // latEnd
+//             xyz2[ 8] = 0.0;
+//             //*/
 
-        // Note: FALSE == (VOID*)NULL or FALSE == (int) 0
-        if (FALSE != previousLEGLIN) {
-            S52_obj *objPrevLeg = S52_PL_isObjValid(previousLEGLIN);
-            if (NULL == objPrevLeg) {
-                PRINTF("WARNING: previousLEGLIN not a valid S52ObjectHandle\n");
-            } else {
-                S52_obj *obj = S52_PL_isObjValid(leglinH);
-                if (NULL != obj) {
-                    S52_PL_setNextLeg(objPrevLeg, obj);
-                }
-            }
-        }
+//             /* CW
+//             xyz2[ 0] = xyz[0] - beam2/sin((90.0 - cog)*DEG_TO_RAD);  // lonBeg
+//             xyz2[ 1] = xyz[1];                                       // latBeg
+//             xyz2[ 2] = 0.0;
 
-        // check alarm for this leg
-        if (0.0 != S52_MP_get(S52_MAR_GUARDZONE_ALARM)) {
-            S52_obj *obj = S52_PL_isObjValid(leglinH);
-            // this test is not required since the obj has just been created
-            if (NULL == obj) {
-                S57_geo *geo = S52_PL_getGeo(obj);
-                S57_setHighlight(geo, TRUE);
-            }
-        }
-    }
+//             xyz2[ 9] = xyz[3];                                       // lonEnd
+//             xyz2[10] = xyz[4] + beam2/sin(cog*DEG_TO_RAD);           // latEnd
+//             xyz2[11] = 0.0;
 
-exit:
+//             xyz2[ 3] = xyz[0];                                       // lonBeg
+//             xyz2[ 4] = xyz[1] - beam2/sin(cog*DEG_TO_RAD);           // latBeg
+//             xyz2[ 5] = 0.0;
 
-    GMUTEXUNLOCK(&_mp_mutex);
+//             xyz2[ 6] = xyz[3] + beam2/sin((90.0 - cog)*DEG_TO_RAD);  // lonEnd
+//             xyz2[ 7] = xyz[4];                                       // latEnd
+//             xyz2[ 8] = 0.0;
 
-    return leglinH;
-}
+//             xyz2[12] =   // lonEnd
+//             xyz2[13] =   // latEnd
+//             xyz2[14] = 0.0;
+//             //*/
+
+//             // experiment II - check rectangular GuardZone then check WP GuardZone
+//             // OR add 2 pts (one at each end) beam2 length that extend leg!
+
+//             // Corner-case:
+//             //
+//             //    LEG1  *
+//             // -------+ *   DEPCNT
+//             //        | *
+//             //        | *****
+//             //     +--+--+
+//             //     |  |  |
+//             //     |  |  |  LEG2
+//             // ----+--+  |
+//             //     |     |
+//             //     |     |
+
+//             double dlon = cos(cog*DEG_TO_RAD) * beam2;
+//             double dlat = sin(cog*DEG_TO_RAD) * beam2;
+
+//             // CW
+//             // starboard
+//             p[0].x = pt[0].x + dlon;  // lonBeg
+//             p[0].y = pt[0].y - dlat;  // latBeg
+//             p[0].z = 0.0;
+
+//             // port
+//             p[1].x = pt[0].x - dlon;  // lonBeg
+//             p[1].y = pt[0].y + dlat;  // latBeg
+//             p[1].z = 0.0;
+
+//             // port
+//             p[2].x = pt[1].x - dlon;  // lonEnd
+//             p[2].y = pt[1].y + dlat;  // latEnd
+//             p[2].z = 0.0;
+
+//             // sarboard
+//             p[3].x = pt[1].x + dlon;  // lonEnd
+//             p[3].y = pt[1].y - dlat;  // latEnd
+//             p[3].z = 0.0;
+
+//             // loop line
+//             p[4].x = pt[0].x;       //
+//             p[4].y = pt[0].y;       //
+//             p[4].z = 0.0;
+
+//             if (TRUE == S52_GL_isHazard(5, p)) {
+//                 S52_MP_set(S52_MAR_GUARDZONE_ALARM, 2.0);  // indication
+//             }
+//         }
+//     }  // if S52_MAR_GUARDZONE_ALARM
+
+//     {   // create LEGLIN
+//         char   attval[80];
+
+//         pt3 pt[2] = {{lonBegin, latBegin, 0.0}, {lonEnd, latEnd, 0.0}};
+//         S57_geo2prj3dv(2, pt);
+//         double cog = ATAN2TODEG(pt);
+
+//         // FIXME: used leglin to get cog when rendering
+//         if (0.0 != wholinDist) {
+//             //SNPRINTF(attval, 80, "select:%i,plnspd:%f,_wholin_dist:%f", select, plnspd, wholinDist);
+//             SNPRINTF(attval, 80, "leglin:%f,select:%i,plnspd:%f,_wholin_dist:%f", cog, select, plnspd, wholinDist);
+//         } else {
+//             //SNPRINTF(attval, 80, "select:%i,plnspd:%f", select, plnspd);
+//             SNPRINTF(attval, 80, "leglin:%f,select:%i,plnspd:%f", cog, select, plnspd);
+//         }
+
+//         double xyz[6] = {lonBegin, latBegin, 0.0, lonEnd, latEnd, 0.0};
+//         leglinH = _newMarObj("leglin", S52_LINES, 2, xyz, attval);
+//         if (FALSE == leglinH) {
+//             PRINTF("WARNING: LEGLIN_H not a valid S52ObjectHandle\n");
+//             g_assert(0);
+//             goto exit;
+//         }
+
+//         // Note: FALSE == (VOID*)NULL or FALSE == (int) 0
+//         if (FALSE != previousLEGLIN) {
+//             S52_obj *objPrevLeg = S52_PL_isObjValid(previousLEGLIN);
+//             if (NULL == objPrevLeg) {
+//                 PRINTF("WARNING: previousLEGLIN not a valid S52ObjectHandle\n");
+//             } else {
+//                 S52_obj *obj = S52_PL_isObjValid(leglinH);
+//                 if (NULL != obj) {
+//                     S52_PL_setNextLeg(objPrevLeg, obj);
+//                 }
+//             }
+//         }
+
+//         // check alarm for this leg
+//         if (0.0 != S52_MP_get(S52_MAR_GUARDZONE_ALARM)) {
+//             S52_obj *obj = S52_PL_isObjValid(leglinH);
+//             // this test is not required since the obj has just been created
+//             if (NULL == obj) {
+//                 S57_geo *geo = S52_PL_getGeo(obj);
+//                 S57_setHighlight(geo, TRUE);
+//             }
+//         }
+//     }
+
+// exit:
+
+//     GMUTEXUNLOCK(&_mp_mutex);
+
+//     return leglinH;
+// }
 
 DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
 {
@@ -6272,158 +6383,158 @@ static S52_obj            *_updateGeo(S52_obj *obj, pt3 *pt)
     return obj;
 }
 
-static S52_obj            *_setPointPosition(S52_obj *obj, double latitude, double longitude, double heading)
-{
-    pt3 pt = {longitude, latitude, 0.0};
+// static S52_obj            *_setPointPosition(S52_obj *obj, double latitude, double longitude, double heading)
+// {
+//     pt3 pt = {longitude, latitude, 0.0};
 
-    // update extent
-    S57_geo *geo = S52_PL_getGeo(obj);
-    _setMarExt(geo, 1, &pt);
+//     // update extent
+//     S57_geo *geo = S52_PL_getGeo(obj);
+//     _setMarExt(geo, 1, &pt);
 
-    if (FALSE == S57_geo2prj3dv(1, &pt)) {
-        return FALSE;
-    }
+//     if (FALSE == S57_geo2prj3dv(1, &pt)) {
+//         return FALSE;
+//     }
 
-    _updateGeo(obj, &pt);
+//     _updateGeo(obj, &pt);
 
-    // reset timer for AIS
-    if (0 == g_strcmp0("vessel", S57_getName(geo))) {
-        S52_PL_setTimeNow(obj);
-        // set 'orient' obj var directly rather then read it from attribut
-        S52_PL_setSYorient(obj, heading);
+//     // reset timer for AIS
+//     if (0 == g_strcmp0("vessel", S57_getName(geo))) {
+//         S52_PL_setTimeNow(obj);
+//         // set 'orient' obj var directly rather then read it from attribut
+//         S52_PL_setSYorient(obj, heading);
 
-        {
-            char   attval[80];
-            SNPRINTF(attval, 80, "headng:%f", heading);
-            _setMarAtt(geo, attval);
-        }
-    }
+//         {
+//             char   attval[80];
+//             SNPRINTF(attval, 80, "headng:%f", heading);
+//             _setMarAtt(geo, attval);
+//         }
+//     }
 
-    /* FIXME: check Guard Zone
-    if (0 == g_strcmp0("ownshp", S57_getName(geo))) {
-    }
-    */
+//     /* FIXME: check Guard Zone
+//     if (0 == g_strcmp0("ownshp", S57_getName(geo))) {
+//     }
+//     */
 
-    return obj;
-}
+//     return obj;
+// }
 
-DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data)
-// FIXME: if ownshp check alarm - call _GuardZoneCheck()
-{
-    S52_CHECK_MUTX_INIT;
+// DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data)
+// // FIXME: if ownshp check alarm - call _GuardZoneCheck()
+// {
+//     S52_CHECK_MUTX_INIT;
 
-    S52_obj *obj = S52_PL_isObjValid(objH);
-    if (NULL == obj) {
-        objH = FALSE;
-        goto exit;
-    }
+//     S52_obj *obj = S52_PL_isObjValid(objH);
+//     if (NULL == obj) {
+//         objH = FALSE;
+//         goto exit;
+//     }
 
-    // debug
-    _mutexOwnerS57ID = S57_getS57ID(S52_PL_getGeo(obj));
+//     // debug
+//     _mutexOwnerS57ID = S57_getS57ID(S52_PL_getGeo(obj));
 
-    // debug
-    _mutexOwner = "S52_pushPosition";
+//     // debug
+//     _mutexOwner = "S52_pushPosition";
 
-    if (NULL == S57_getPrjStr()) {
-        objH = FALSE;
-        goto exit;
-    }
+//     if (NULL == S57_getPrjStr()) {
+//         objH = FALSE;
+//         goto exit;
+//     }
 
-    // clutter
-    //PRINTF("objH:%u, latitude:%f, longitude:%f, data:%f\n", objH, latitude, longitude, data);
+//     // clutter
+//     //PRINTF("objH:%u, latitude:%f, longitude:%f, data:%f\n", objH, latitude, longitude, data);
 
-    latitude  = _validate_lat(latitude);
-    longitude = _validate_lon(longitude);
-    //time      = _validate_min(time);
+//     latitude  = _validate_lat(latitude);
+//     longitude = _validate_lon(longitude);
+//     //time      = _validate_min(time);
 
-    S57_geo *geo = S52_PL_getGeo(obj);
+//     S57_geo *geo = S52_PL_getGeo(obj);
 
-    // POINT
-    if (S57_POINT_T == S57_getObjtype(geo)) {
-        _setPointPosition(obj, latitude, longitude, data);
+//     // POINT
+//     if (S57_POINT_T == S57_getObjtype(geo)) {
+//         _setPointPosition(obj, latitude, longitude, data);
 
-        /* experimental: display cursor lat/lng
-        if (0 == g_strcmp0("cursor", S57_getName(geo))) {
-            char attval[80] = {'\0'};
-            SNPRINTF(attval, 80, "_cursor_label:%f%c %f%c", fabs(latitude), (latitude<0)? 'S':'N', fabs(longitude), (longitude<0)? 'W':'E');
-            _setMarAtt(geo, attval);
-            S52_PL_resetParseText(obj);
-        }
-        */
-    }
-    else // LINE AREA
-    {
-        guint   sz  = S57_getGeoSize(geo);
-        guint   npt = 0;
-        double *ppt = NULL;
-        S57_getGeoData(geo, 0, &npt, &ppt);
+//         /* experimental: display cursor lat/lng
+//         if (0 == g_strcmp0("cursor", S57_getName(geo))) {
+//             char attval[80] = {'\0'};
+//             SNPRINTF(attval, 80, "_cursor_label:%f%c %f%c", fabs(latitude), (latitude<0)? 'S':'N', fabs(longitude), (longitude<0)? 'W':'E');
+//             _setMarAtt(geo, attval);
+//             S52_PL_resetParseText(obj);
+//         }
+//         */
+//     }
+//     else // LINE AREA
+//     {
+//         guint   sz  = S57_getGeoSize(geo);
+//         guint   npt = 0;
+//         double *ppt = NULL;
+//         S57_getGeoData(geo, 0, &npt, &ppt);
 
-        pt3 p = {longitude, latitude, 0.0};
-        if (FALSE == S57_geo2prj3dv(1, &p)) {
-            PRINTF("WARNING: S57_geo2prj3dv() fail\n");
-            objH = FALSE;
-            goto exit;
-        }
+//         pt3 p = {longitude, latitude, 0.0};
+//         if (FALSE == S57_geo2prj3dv(1, &p)) {
+//             PRINTF("WARNING: S57_geo2prj3dv() fail\n");
+//             objH = FALSE;
+//             goto exit;
+//         }
 
-        if (sz < npt) {
-            ppt[sz*3 + 0] = p.x;
-            ppt[sz*3 + 1] = p.y;
-            ppt[sz*3 + 2] = data;
-            S57_setGeoSize(geo, sz+1);
-        } else {
-            // FIFO - if sz == npt, shift npt-1 coord
-            memmove(ppt, ppt+3, (npt-1) * sizeof(pt3));
-            ppt[((npt-1) * 3) + 0] = p.x;
-            ppt[((npt-1) * 3) + 1] = p.y;
-            ppt[((npt-1) * 3) + 2] = data;
-        }
+//         if (sz < npt) {
+//             ppt[sz*3 + 0] = p.x;
+//             ppt[sz*3 + 1] = p.y;
+//             ppt[sz*3 + 2] = data;
+//             S57_setGeoSize(geo, sz+1);
+//         } else {
+//             // FIFO - if sz == npt, shift npt-1 coord
+//             memmove(ppt, ppt+3, (npt-1) * sizeof(pt3));
+//             ppt[((npt-1) * 3) + 0] = p.x;
+//             ppt[((npt-1) * 3) + 1] = p.y;
+//             ppt[((npt-1) * 3) + 2] = data;
+//         }
 
-        //* set extent - use for culling
-        if (0 == sz) {
-            // first pos set extent directly
-            S57_setGeoExt(geo, longitude, latitude, longitude, latitude);
-        } else {
-            // FIXME: LINES 'pastrk' and 'afgves' have extent that allway grow
-            // but pushPos is stack base, so the poped pos reduce the extent and the pushed pos augement it
-            // FIX: to be safe traverse the stack to recompute extent
-            ObjExt_t ext = S57_getGeoExt(geo);
-            pt3 pt[3] = {{longitude, latitude, 0.0}, {ext.W, ext.S, 0.0}, {ext.E, ext.N, 0.0}};
+//         //* set extent - use for culling
+//         if (0 == sz) {
+//             // first pos set extent directly
+//             S57_setGeoExt(geo, longitude, latitude, longitude, latitude);
+//         } else {
+//             // FIXME: LINES 'pastrk' and 'afgves' have extent that allway grow
+//             // but pushPos is stack base, so the poped pos reduce the extent and the pushed pos augement it
+//             // FIX: to be safe traverse the stack to recompute extent
+//             ObjExt_t ext = S57_getGeoExt(geo);
+//             pt3 pt[3] = {{longitude, latitude, 0.0}, {ext.W, ext.S, 0.0}, {ext.E, ext.N, 0.0}};
 
-            _setMarExt(geo, 3, pt);
-        }
-        //*/
+//             _setMarExt(geo, 3, pt);
+//         }
+//         //*/
 
-#ifdef S52_USE_AFGLOW
-        // update time for afterglow LINE
-        if ((0 == g_strcmp0("afgves", S57_getName(geo))) ||
-            (0 == g_strcmp0("afgshp", S57_getName(geo)))
-           ) {
-            S52_PL_setTimeNow(obj);
-        }
-#endif
+// #ifdef S52_USE_AFGLOW
+//         // update time for afterglow LINE
+//         if ((0 == g_strcmp0("afgves", S57_getName(geo))) ||
+//             (0 == g_strcmp0("afgshp", S57_getName(geo)))
+//            ) {
+//             S52_PL_setTimeNow(obj);
+//         }
+// #endif
 
-    }
+//     }
 
-exit:
+// exit:
 
-    GMUTEXUNLOCK(&_mp_mutex);
+//     GMUTEXUNLOCK(&_mp_mutex);
 
-    //PRINTF("-3- objH:%u, latitude:%f, longitude:%f, data:%f\n", objH, latitude, longitude, data);
+//     //PRINTF("-3- objH:%u, latitude:%f, longitude:%f, data:%f\n", objH, latitude, longitude, data);
 
-    /*
-    if (_SELECTED == objH) {
-        // FIXME: get the real value
-        S52_draw();
-    }
-    */
+//     /*
+//     if (_SELECTED == objH) {
+//         // FIXME: get the real value
+//         S52_draw();
+//     }
+//     */
 
-    // debug
-    _mutexOwner = NULL;
-    _mutexOwnerS57ID = 0;
+//     // debug
+//     _mutexOwner = NULL;
+//     _mutexOwnerS57ID = 0;
 
 
-    return objH;
-}
+//     return objH;
+// }
 
 DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
 {
@@ -6652,111 +6763,111 @@ exit:
     return vrmebl;
 }
 
-DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, double *brg, double *rge)
-{
-    S52_CHECK_MUTX_INIT;
+// DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, double *brg, double *rge)
+// {
+//     S52_CHECK_MUTX_INIT;
 
-    if (NULL == S57_getPrjStr()) {
-        objH = FALSE;
-        goto exit;
-    }
+//     if (NULL == S57_getPrjStr()) {
+//         objH = FALSE;
+//         goto exit;
+//     }
 
-    S52_obj *obj = S52_PL_isObjValid(objH);
-    if (NULL == obj) {
-        objH = FALSE;
-        goto exit;
-    }
+//     S52_obj *obj = S52_PL_isObjValid(objH);
+//     if (NULL == obj) {
+//         objH = FALSE;
+//         goto exit;
+//     }
 
-    if (TRUE!=_isMarObjValid(obj, "ebline") && TRUE!=_isMarObjValid(obj, "vrmark")) {
-        PRINTF("WARNING: not a 'ebline' or 'vrmark' object\n");
-        objH = FALSE;
-        goto exit;
-    }
+//     if (TRUE!=_isMarObjValid(obj, "ebline") && TRUE!=_isMarObjValid(obj, "vrmark")) {
+//         PRINTF("WARNING: not a 'ebline' or 'vrmark' object\n");
+//         objH = FALSE;
+//         goto exit;
+//     }
 
-    double latA = 0.0;
-    double lonA = 0.0;
-    double latB = pixels_y;
-    double lonB = pixels_x;
-    if (FALSE == S52_GL_win2prj(&lonB, &latB)) {
-        PRINTF("WARNING: S52_GL_win2prj() failed\n");
-        objH = FALSE;
-        goto exit;
-    }
+//     double latA = 0.0;
+//     double lonA = 0.0;
+//     double latB = pixels_y;
+//     double lonB = pixels_x;
+//     if (FALSE == S52_GL_win2prj(&lonB, &latB)) {
+//         PRINTF("WARNING: S52_GL_win2prj() failed\n");
+//         objH = FALSE;
+//         goto exit;
+//     }
 
-    guint    npt = 0;
-    double  *ppt = NULL;
-    S57_geo *geo = S52_PL_getGeo(obj);
-    S57_getGeoData(geo, 0, &npt, &ppt);
+//     guint    npt = 0;
+//     double  *ppt = NULL;
+//     S57_geo *geo = S52_PL_getGeo(obj);
+//     S57_getGeoData(geo, 0, &npt, &ppt);
 
-    GString *setOriginstr = S57_getAttVal(geo, "_setOrigin");
-    char     c            = *setOriginstr->str;
+//     GString *setOriginstr = S57_getAttVal(geo, "_setOrigin");
+//     char     c            = *setOriginstr->str;
 
-    switch (c) {
-    case 'I':    // Init freely moveable origin
-        lonA = lonB;
-        latA = latB;
-        _setMarAtt(geo, "_setOrigin:Y"); // FIXME: does setOriginstr->str become dandling ??
-        break;
-    case 'Y':    // user set freely moveable origin
-        lonA = ppt[0];
-        latA = ppt[1];
-        break;
-    case 'N':    // _OWNSHP origin (FIXME: apply ownshp offset set by S52_setDimension())
-        if (FALSE != _OWNSHP) {
-            guint    npt = 0;
-            double  *ppt = NULL;
-            S52_obj *obj = S52_PL_isObjValid(_OWNSHP);
-            if (NULL == obj)
-                break;
-            S57_geo *geo = S52_PL_getGeo(obj);
-            S57_getGeoData(geo, 0, &npt, &ppt);
-            lonA = ppt[0];
-            latA = ppt[1];
-        } else {
-            // FIXME: get the real value
-            double cLat, cLon, rNM, north;
-            //S52_getView(&cLat, &cLon, &rNM, &north);
-            S52_GL_getView(&cLat, &cLon, &rNM, &north);
-            lonA = cLon;
-            latA = cLat;
-        }
-        break;
-    }
+//     switch (c) {
+//     case 'I':    // Init freely moveable origin
+//         lonA = lonB;
+//         latA = latB;
+//         _setMarAtt(geo, "_setOrigin:Y"); // FIXME: does setOriginstr->str become dandling ??
+//         break;
+//     case 'Y':    // user set freely moveable origin
+//         lonA = ppt[0];
+//         latA = ppt[1];
+//         break;
+//     case 'N':    // _OWNSHP origin (FIXME: apply ownshp offset set by S52_setDimension())
+//         if (FALSE != _OWNSHP) {
+//             guint    npt = 0;
+//             double  *ppt = NULL;
+//             S52_obj *obj = S52_PL_isObjValid(_OWNSHP);
+//             if (NULL == obj)
+//                 break;
+//             S57_geo *geo = S52_PL_getGeo(obj);
+//             S57_getGeoData(geo, 0, &npt, &ppt);
+//             lonA = ppt[0];
+//             latA = ppt[1];
+//         } else {
+//             // FIXME: get the real value
+//             double cLat, cLon, rNM, north;
+//             //S52_getView(&cLat, &cLon, &rNM, &north);
+//             S52_GL_getView(&cLat, &cLon, &rNM, &north);
+//             lonA = cLon;
+//             latA = cLat;
+//         }
+//         break;
+//     }
 
-    {
-        // FIXME: approximative (not WGS84) use S57_prj2geo()
-        pt3 pt[2] = {{lonA, latA, 0.0}, {lonB, latB, 0.0}};
-        double dist   = sqrt(pow(pt[1].x-pt[0].x, 2) + pow(pt[1].y-pt[0].y, 2));
-        double deg    = ATAN2TODEG(pt);
+//     {
+//         // FIXME: approximative (not WGS84) use S57_prj2geo()
+//         pt3 pt[2] = {{lonA, latA, 0.0}, {lonB, latB, 0.0}};
+//         double dist   = sqrt(pow(pt[1].x-pt[0].x, 2) + pow(pt[1].y-pt[0].y, 2));
+//         double deg    = ATAN2TODEG(pt);
 
-        char unit       = 'm';
-        char attval[80] = {'\0'};
+//         char unit       = 'm';
+//         char attval[80] = {'\0'};
 
-        _updateGeo(obj, pt);
+//         _updateGeo(obj, pt);
 
-        // in Nautical Mile if > 1852m (1NM)
-        if (dist >  1852) {
-            dist /= 1852;
-            unit  = 'M';
-        }
+//         // in Nautical Mile if > 1852m (1NM)
+//         if (dist >  1852) {
+//             dist /= 1852;
+//             unit  = 'M';
+//         }
 
-        if (deg < 0)
-            deg += 360;
+//         if (deg < 0)
+//             deg += 360;
 
-        SNPRINTF(attval, 80, "_vrmebl_label:%.1f deg / %.1f%c", deg, dist, unit);
-        _setMarAtt(geo, attval);
-        S52_PL_resetParseText(obj);
+//         SNPRINTF(attval, 80, "_vrmebl_label:%.1f deg / %.1f%c", deg, dist, unit);
+//         _setMarAtt(geo, attval);
+//         S52_PL_resetParseText(obj);
 
-        if (NULL != brg) *brg = deg;
-        if (NULL != rge) *rge = dist;
-    }
+//         if (NULL != brg) *brg = deg;
+//         if (NULL != rge) *rge = dist;
+//     }
 
-exit:
+// exit:
 
-    GMUTEXUNLOCK(&_mp_mutex);
+//     GMUTEXUNLOCK(&_mp_mutex);
 
-    return objH;
-}
+//     return objH;
+// }
 
 DLL int             STD S52_newCSYMB(void)
 {
@@ -6809,4 +6920,11 @@ exit:
     GMUTEXUNLOCK(&_mp_mutex);
 
     return ret;
+}
+
+
+void call_app()
+{
+   // _app();
+   ALL_C_TRAV_RBIN_ij(g_ptr_array_foreach(c->renderBin[i][j], (GFunc)S52_processObject, NULL));
 }
